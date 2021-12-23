@@ -65,7 +65,7 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 }
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
+	h.d.Writer().Write(w, r, "Test")
 }
 
 func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
