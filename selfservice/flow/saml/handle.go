@@ -14,7 +14,7 @@ import (
 
 const (
 	RouteSamlMetadata = "/self-service/saml/metadata"
-	RouteSamlAcs      = "self-service/saml/acs"
+	RouteSamlAcs      = "/self-service/saml/acs"
 )
 
 type (
