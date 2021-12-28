@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/RobotsAndPencils/go-saml"
 	"github.com/julienschmidt/httprouter"
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
@@ -65,7 +66,27 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 }
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	h.d.Writer().Write(w, r, "Test")
+
+	sp := saml.ServiceProviderSettings{
+		PublicCertPath:              "/etc/config/kratos/myservice.cert",
+		PrivateKeyPath:              "/etc/config/kratos/myservice.key",
+		IDPSSOURL:                   "http://idp/saml2",
+		IDPSSODescriptorURL:         "http://idp/issuer",
+		IDPPublicCertPath:           "/etc/config/kratos/myservice.cert",
+		SPSignRequest:               true,
+		AssertionConsumerServiceURL: "http://localhost:8000/saml_consume",
+	}
+	sp.Init()
+
+	w.Header().Set("Content-Type", "application/xml")
+	md, err := sp.GetEntityDescriptor()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Error: " + err.Error()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/xml")
+	w.Write([]byte(md))
 }
 
 func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

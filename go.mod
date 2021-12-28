@@ -21,6 +21,7 @@ replace (
 require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.0.0
+	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
 	github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0
 	github.com/avast/retry-go/v3 v3.1.1
 	github.com/bradleyjkemp/cupaloy/v2 v2.6.0
@@ -59,6 +60,7 @@ require (
 	github.com/inhies/go-bytesize v0.0.0-20210819104631-275770b98743
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/knadh/koanf v1.3.0
 	github.com/luna-duclos/instrumentedsql v1.1.3
 	github.com/luna-duclos/instrumentedsql/opentracing v0.0.0-20201103091713-40d03108b6f4
@@ -66,6 +68,7 @@ require (
 	github.com/mikefarah/yq v1.15.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
+	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/ory/analytics-go/v4 v4.0.2
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/go-acc v0.2.6
