@@ -67,14 +67,16 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	conf := h.d.Config(r.Context())
+
 	sp := saml.ServiceProviderSettings{
-		PublicCertPath:              "/etc/config/kratos/myservice.cert",
-		PrivateKeyPath:              "/etc/config/kratos/myservice.key",
-		IDPSSOURL:                   "http://idp/saml2",
-		IDPSSODescriptorURL:         "http://idp/issuer",
-		IDPPublicCertPath:           "/etc/config/kratos/myservice.cert",
+		PublicCertPath:              conf.SamlPublicCertPath().Path,
+		PrivateKeyPath:              conf.SamlPrivateKeyPath().Path,
+		IDPSSOURL:                   conf.SamlIdpUrl().String(),
+		IDPSSODescriptorURL:         conf.SamlIdpDescriptoUrl().String(),
+		IDPPublicCertPath:           conf.SamlIdpCertPath().Path,
 		SPSignRequest:               true,
-		AssertionConsumerServiceURL: "http://localhost:8000/saml_consume",
+		AssertionConsumerServiceURL: conf.SamlSpAcsUrl().String(),
 	}
 	sp.Init()
 
@@ -92,4 +94,5 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	response := r.URL.Query()
 	fmt.Println(response)
+
 }

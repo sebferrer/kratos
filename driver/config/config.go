@@ -63,6 +63,12 @@ const (
 	ViperKeyCourierSMTPFrom                                  = "courier.smtp.from_address"
 	ViperKeyCourierSMTPFromName                              = "courier.smtp.from_name"
 	ViperKeyCourierSMTPHeaders                               = "courier.smtp.headers"
+	ViperKeySamlPublicCertPath                               = "saml.public_cert_path"
+	ViperKeySamlPrivateKeyPath                               = "saml.private_key_path"
+	ViperKeySamlIdpUrl                                       = "saml.idp_url"
+	ViperKeySamlIdpCertPath                                  = "saml.idp_cert_path"
+	ViperKeySamlAssertionConsumerServiceURL                  = "saml.sp_acs_url"
+	ViperKeySamlIdpDescriptorUrl                             = "saml.idp_sso_descriptor_url"
 	ViperKeySecretsDefault                                   = "secrets.default"
 	ViperKeySecretsCookie                                    = "secrets.cookie"
 	ViperKeySecretsCipher                                    = "secrets.cipher"
@@ -864,6 +870,30 @@ func (p *Config) CourierTemplatesRoot() string {
 
 func (p *Config) CourierSMTPHeaders() map[string]string {
 	return p.p.StringMap(ViperKeyCourierSMTPHeaders)
+}
+
+func (p *Config) SamlPublicCertPath() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlPublicCertPath)
+}
+
+func (p *Config) SamlPrivateKeyPath() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlPrivateKeyPath)
+}
+
+func (p *Config) SamlIdpUrl() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlIdpUrl)
+}
+
+func (p *Config) SamlIdpCertPath() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlIdpCertPath)
+}
+
+func (p *Config) SamlSpAcsUrl() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlAssertionConsumerServiceURL)
+}
+
+func (p *Config) SamlIdpDescriptoUrl() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlIdpDescriptorUrl)
 }
 
 func splitUrlAndFragment(s string) (string, string) {
