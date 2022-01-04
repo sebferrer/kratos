@@ -1,3 +1,0 @@
-[submodule "saml/saml"]
-	path = saml/saml
-	url = https://github.com/crewjam/saml
