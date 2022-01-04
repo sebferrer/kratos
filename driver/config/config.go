@@ -69,6 +69,7 @@ const (
 	ViperKeySamlIdpCertPath                                  = "saml.idp_cert_path"
 	ViperKeySamlAssertionConsumerServiceURL                  = "saml.sp_acs_url"
 	ViperKeySamlIdpDescriptorUrl                             = "saml.idp_sso_descriptor_url"
+	ViperKeySamlAllowIdpInitiated                            = "saml.allow_idp_initiated"
 	ViperKeySecretsDefault                                   = "secrets.default"
 	ViperKeySecretsCookie                                    = "secrets.cookie"
 	ViperKeySecretsCipher                                    = "secrets.cipher"
@@ -896,6 +897,9 @@ func (p *Config) SamlIdpDescriptoUrl() *url.URL {
 	return p.ParseURIOrFail(ViperKeySamlIdpDescriptorUrl)
 }
 
+func (p *Config) SamlAllowIdpInitiated() bool {
+	return p.p.Bool(ViperKeySamlAllowIdpInitiated)
+}
 func splitUrlAndFragment(s string) (string, string) {
 	i := strings.IndexByte(s, '#')
 	if i < 0 {

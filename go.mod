@@ -31,6 +31,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cortesi/modd v0.0.0-20210323234521-b35eddab86cc
+	github.com/crewjam/saml v0.4.6
 	github.com/davecgh/go-spew v1.1.1
 	github.com/davidrjonas/semver-cli v0.0.0-20190116233701-ee19a9a0dda6
 	github.com/duo-labs/webauthn v0.0.0-20210727191636-9f1b88ef44cc
@@ -64,6 +65,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/knadh/koanf v1.3.3
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/luna-duclos/instrumentedsql v1.1.3
 	github.com/luna-duclos/instrumentedsql/opentracing v0.0.0-20201103091713-40d03108b6f4
 	github.com/mattn/goveralls v0.0.7

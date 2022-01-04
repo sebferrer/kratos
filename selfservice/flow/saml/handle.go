@@ -1,7 +1,6 @@
 package saml
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/RobotsAndPencils/go-saml"
@@ -87,12 +86,51 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 		w.Write([]byte("Error: " + err.Error()))
 		return
 	}
-	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(md))
 }
 
 func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	response := r.URL.Query()
-	fmt.Println(response)
+
+	conf := h.d.Config(r.Context())
+
+	sp := saml.ServiceProviderSettings{
+		PublicCertPath:              conf.SamlPublicCertPath().Path,
+		PrivateKeyPath:              conf.SamlPrivateKeyPath().Path,
+		IDPSSOURL:                   conf.SamlIdpUrl().String(),
+		IDPSSODescriptorURL:         conf.SamlIdpDescriptoUrl().String(),
+		IDPPublicCertPath:           conf.SamlIdpCertPath().Path,
+		SPSignRequest:               true,
+		AssertionConsumerServiceURL: conf.SamlSpAcsUrl().String(),
+	}
+	sp.Init()
+
+	encodedXML := r.FormValue("SAMLResponse")
+
+	if encodedXML == "" {
+		w.WriteHeader(500)
+		w.Write([]byte("Error: SAMLResponse form value missing"))
+		return
+	}
+
+	response, err := saml.ParseEncodedResponse(encodedXML)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Error: SAMLResponse parse: " + err.Error()))
+		return
+	}
+
+	err = response.Validate(&sp)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Error: SAMLResponse validation: " + err.Error()))
+		return
+	}
+
+	samlID := response.GetAttribute("uid")
+	if samlID == "" {
+		w.WriteHeader(500)
+		w.Write([]byte("Error: SAML attribute identifier uid missing"))
+		return
+	}
 
 }

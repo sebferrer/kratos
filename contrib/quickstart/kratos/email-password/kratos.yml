@@ -9,7 +9,7 @@ saml:
   idp_cert_path: "file:///etc/config/kratos/myservice.cert"
   sp_acs_url: "http://localhost:8000/saml_consume"
   idp_sso_descriptor_url: "http://idp/issuer"
-
+  allow_idp_initiated: true
 serve:
   public:
     base_url: http://51.210.126.182:4433/
