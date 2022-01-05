@@ -1366,25 +1366,7 @@
           "type": "string",
           "format": "uri"
         },
-        "idp_url": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "idp_cert_path": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "idp_acs_url": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "idp_sso_descriptor_url": {
+        "idp_metadata_url": {
           "title": "Path Of Public Certificate",
           "description": "The local path of the public certificate of Kratos",
           "type": "string",

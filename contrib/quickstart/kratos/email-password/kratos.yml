@@ -5,11 +5,8 @@ dsn: memory
 saml:
   public_cert_path: "file:///etc/config/kratos/myservice.cert"
   private_key_path: "file:///etc/config/kratos/myservice.key"
-  idp_url: "http://idp/saml2"
-  idp_cert_path: "file:///etc/config/kratos/myservice.cert"
-  sp_acs_url: "http://localhost:8000/saml_consume"
-  idp_sso_descriptor_url: "http://idp/issuer"
-  allow_idp_initiated: true
+  idp_metadata_url: "https://samltest.id/saml/idp"
+
 serve:
   public:
     base_url: http://51.210.126.182:4433/

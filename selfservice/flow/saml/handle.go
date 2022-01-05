@@ -1,9 +1,14 @@
 package saml
 
 import (
+	"context"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"net/http"
+	"net/url"
 
-	"github.com/RobotsAndPencils/go-saml"
+	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
@@ -16,6 +21,8 @@ const (
 	RouteSamlMetadata = "/self-service/saml/metadata"
 	RouteSamlAcs      = "/self-service/saml/acs"
 )
+
+var samlMiddleware *samlsp.Middleware
 
 type (
 	handlerDependencies interface {
@@ -60,77 +67,65 @@ type selfServiceLogoutUrl struct {
 }
 
 func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
+
 	router.GET(RouteSamlMetadata, h.submitMetadata)
 	router.POST(RouteSamlAcs, h.handleResponse)
 }
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	conf := h.d.Config(r.Context())
-
-	sp := saml.ServiceProviderSettings{
-		PublicCertPath:              conf.SamlPublicCertPath().Path,
-		PrivateKeyPath:              conf.SamlPrivateKeyPath().Path,
-		IDPSSOURL:                   conf.SamlIdpUrl().String(),
-		IDPSSODescriptorURL:         conf.SamlIdpDescriptoUrl().String(),
-		IDPPublicCertPath:           conf.SamlIdpCertPath().Path,
-		SPSignRequest:               true,
-		AssertionConsumerServiceURL: conf.SamlSpAcsUrl().String(),
+	if samlMiddleware == nil {
+		h.instantiateMiddleware(r)
 	}
-	sp.Init()
 
-	w.Header().Set("Content-Type", "application/xml")
-	md, err := sp.GetEntityDescriptor()
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("Error: " + err.Error()))
-		return
-	}
-	w.Write([]byte(md))
+	samlMiddleware.ServeMetadata(w, r)
+
 }
 
 func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	if samlMiddleware == nil {
+		h.instantiateMiddleware(r)
+	}
+
+	samlMiddleware.ServeACS(w, r)
+
+}
+
+func (h *Handler) instantiateMiddleware(r *http.Request) {
+
 	conf := h.d.Config(r.Context())
 
-	sp := saml.ServiceProviderSettings{
-		PublicCertPath:              conf.SamlPublicCertPath().Path,
-		PrivateKeyPath:              conf.SamlPrivateKeyPath().Path,
-		IDPSSOURL:                   conf.SamlIdpUrl().String(),
-		IDPSSODescriptorURL:         conf.SamlIdpDescriptoUrl().String(),
-		IDPPublicCertPath:           conf.SamlIdpCertPath().Path,
-		SPSignRequest:               true,
-		AssertionConsumerServiceURL: conf.SamlSpAcsUrl().String(),
-	}
-	sp.Init()
-
-	encodedXML := r.FormValue("SAMLResponse")
-
-	if encodedXML == "" {
-		w.WriteHeader(500)
-		w.Write([]byte("Error: SAMLResponse form value missing"))
-		return
-	}
-
-	response, err := saml.ParseEncodedResponse(encodedXML)
+	keyPair, err := tls.LoadX509KeyPair(conf.SamlPublicCertPath().Path, conf.SamlPrivateKeyPath().Path)
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("Error: SAMLResponse parse: " + err.Error()))
-		return
+		panic(err) // TODO handle error
 	}
-
-	err = response.Validate(&sp)
+	keyPair.Leaf, err = x509.ParseCertificate(keyPair.Certificate[0])
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("Error: SAMLResponse validation: " + err.Error()))
-		return
+		panic(err) // TODO handle error
 	}
 
-	samlID := response.GetAttribute("uid")
-	if samlID == "" {
-		w.WriteHeader(500)
-		w.Write([]byte("Error: SAML attribute identifier uid missing"))
-		return
+	idpMetadataURL, err := url.Parse(conf.SamlIdpMetadataUrl().String())
+	if err != nil {
+		panic(err) // TODO handle error
 	}
+	idpMetadata, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient,
+		*idpMetadataURL)
+	if err != nil {
+		panic(err) // TODO handle error
+	}
+
+	rootURL, err := url.Parse(conf.SelfServiceBrowserDefaultReturnTo().String())
+	if err != nil {
+		panic(err) // TODO handle error
+	}
+
+	samlMiddleware, _ = samlsp.New(samlsp.Options{
+		URL:         *rootURL,
+		Key:         keyPair.PrivateKey.(*rsa.PrivateKey),
+		Certificate: keyPair.Leaf,
+		IDPMetadata: idpMetadata,
+		SignRequest: true,
+	})
 
 }
