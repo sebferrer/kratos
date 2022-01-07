@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net/http"
 	"net/url"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
+
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/x"
 	"github.com/ory/x/decoderx"
@@ -23,6 +25,7 @@ const (
 )
 
 var samlMiddleware *samlsp.Middleware
+var ErrNoSession = errors.New("saml: session not present")
 
 type (
 	handlerDependencies interface {
@@ -68,8 +71,10 @@ type selfServiceLogoutUrl struct {
 
 func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
+	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
+
 	router.GET(RouteSamlMetadata, h.submitMetadata)
-	router.POST(RouteSamlAcs, h.handleResponse)
+	router.POST(RouteSamlAcs, h.serveAcs)
 }
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -82,13 +87,32 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 
 }
 
-func (h *Handler) handleResponse(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Handler) serveAcs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {
 		h.instantiateMiddleware(r)
 	}
 
-	samlMiddleware.ServeACS(w, r)
+	r.ParseForm()
+
+	possibleRequestIDs := []string{}
+	if samlMiddleware.ServiceProvider.AllowIDPInitiated {
+		possibleRequestIDs = append(possibleRequestIDs, "")
+	}
+
+	trackedRequests := samlMiddleware.RequestTracker.GetTrackedRequests(r)
+	for _, tr := range trackedRequests {
+		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
+	}
+
+	assertion, err := samlMiddleware.ServiceProvider.ParseResponse(r, possibleRequestIDs)
+	if err != nil {
+		samlMiddleware.OnError(w, r, err)
+		return
+	}
+
+	samlMiddleware.CreateSessionFromAssertion(w, r, assertion, samlMiddleware.ServiceProvider.DefaultRedirectURI)
+	return
 
 }
 
@@ -127,5 +151,23 @@ func (h *Handler) instantiateMiddleware(r *http.Request) {
 		IDPMetadata: idpMetadata,
 		SignRequest: true,
 	})
+
+}
+
+func (h *Handler) initSamlAPIFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	h.NewSamlAuthFlow(w, r)
+}
+
+func (h *Handler) NewSamlAuthFlow(w http.ResponseWriter, r *http.Request) {
+
+	_, err := samlMiddleware.Session.GetSession(r)
+
+	if err == ErrNoSession {
+		samlMiddleware.HandleStartAuthFlow(w, r)
+		return
+	}
+
+	samlMiddleware.OnError(w, r, err)
+	return
 
 }
