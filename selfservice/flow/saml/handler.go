@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	RouteSamlMetadata = "/self-service/saml/metadata"
-	RouteSamlAcs      = "/self-service/saml/acs"
+	RouteSamlMetadata  = "/self-service/saml/metadata"
+	RouteSamlAcs       = "/self-service/saml/acs"
+	RouteSamlLoginInit = "/self-service/saml/idp"
 )
 
 var samlMiddleware *samlsp.Middleware
@@ -54,8 +55,8 @@ func NewHandler(d handlerDependencies) *Handler {
 
 }
 
-// swagger:model selfServiceLogoutUrl
-type selfServiceLogoutUrl struct {
+// swagger:model selfServiceSamlUrl
+type selfServiceSamlUrl struct {
 	// SamlMetadataURL is a get endpoint to get the metadata
 	//
 	// format: uri
@@ -74,6 +75,7 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
 
 	router.GET(RouteSamlMetadata, h.submitMetadata)
+	router.GET(RouteSamlLoginInit, h.redirectToIdp)
 	router.POST(RouteSamlAcs, h.serveAcs)
 }
 
@@ -84,6 +86,13 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 	}
 
 	samlMiddleware.ServeMetadata(w, r)
+
+}
+
+func (h *Handler) redirectToIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	conf := h.d.Config(r.Context())
+
+	http.Redirect(w, r, conf.SamlIdpMetadataUrl().Path, http.StatusTemporaryRedirect)
 
 }
 
@@ -154,13 +163,53 @@ func (h *Handler) instantiateMiddleware(r *http.Request) {
 
 }
 
-func (h *Handler) initSamlAPIFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// swagger:route GET /self-service/saml/idp v0alpha2 initializeSelfServiceSamlFlowForBrowsers
+//
+// Initialize Login Flow for Browsers
+//
+// This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
+// cookies and anti-CSRF measures required for browser-based flows.
+//
+// If this endpoint is opened as a link in the browser, it will be redirected to
+// `selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
+// exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
+// `?refresh=true` was set.
+//
+// If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
+// case of an error, the `error.id` of the JSON response body can be one of:
+//
+// - `session_already_available`: The user is already signed in.
+// - `session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
+// - `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
+// - `security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
+//
+// This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+//
+// More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+//
+//     Produces:
+//     - application/json
+//
+//     Schemes: http, https
+//
+//     Responses:
+//       200: selfServiceLoginFlow
+//       302: emptyResponse
+//       400: jsonError
+//       500: jsonError
+func (h *Handler) initSamlLoginFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	h.NewSamlAuthFlow(w, r)
 }
 
 func (h *Handler) NewSamlAuthFlow(w http.ResponseWriter, r *http.Request) {
 
-	_, err := samlMiddleware.Session.GetSession(r)
+	conf := h.d.Config(r.Context())
+
+	session, err := samlMiddleware.Session.GetSession(r)
+
+	if session != nil {
+		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
+	}
 
 	if err == ErrNoSession {
 		samlMiddleware.HandleStartAuthFlow(w, r)
