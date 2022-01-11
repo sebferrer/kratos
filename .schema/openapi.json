@@ -2006,6 +2006,31 @@
         ]
       }
     },
+    "/self-service/saml/idp":{
+      "get":{
+        "description": "This endpoint is to redirect the user to the idp auth flow",
+        "operationId": "getUrlIdp",
+        "response": {
+          "302":{
+            "$ref": "#/components/responses/emptyResponse"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/genericError"
+                }
+              }
+            },
+            "description": "genericError"
+          }
+        },
+        "summary": "Redirect the user to the IDP flow",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/self-service/saml/metadata":{
       "get":{
         "description": "This endpoint is for the IDP to obtain kratos metadata",
