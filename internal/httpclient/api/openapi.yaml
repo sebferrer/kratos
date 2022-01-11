@@ -1650,6 +1650,54 @@ paths:
       summary: Get Registration Flow
       tags:
       - v0alpha2
+  /self-service/saml/idp:
+    get:
+      description: |-
+        This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
+        cookies and anti-CSRF measures required for browser-based flows.
+
+        If this endpoint is opened as a link in the browser, it will be redirected to
+        `selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
+        exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
+        `?refresh=true` was set.
+
+        If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
+        case of an error, the `error.id` of the JSON response body can be one of:
+
+        `session_already_available`: The user is already signed in.
+        `session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
+        `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
+        `security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
+
+        This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+
+        More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+      operationId: initializeSelfServiceSamlFlowForBrowsers
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/selfServiceLoginFlow'
+          description: selfServiceLoginFlow
+        "302":
+          description: Empty responses are sent when, for example, resources are deleted.
+            The HTTP status code for empty responses is typically 201.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jsonError'
+          description: jsonError
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jsonError'
+          description: jsonError
+      summary: Initialize Login Flow for Browsers
+      tags:
+      - v0alpha2
   /self-service/settings:
     post:
       description: |-
@@ -3607,6 +3655,24 @@ components:
       - issued_at
       - request_url
       - ui
+      type: object
+    selfServiceSamlUrl:
+      properties:
+        saml_acs_url:
+          description: |-
+            SamlAcsURL is a post endpoint to handle SAML Response
+
+            format: uri
+          type: string
+        saml_metadata_url:
+          description: |-
+            SamlMetadataURL is a get endpoint to get the metadata
+
+            format: uri
+          type: string
+      required:
+      - saml_acs_url
+      - saml_metadata_url
       type: object
     selfServiceSettingsFlow:
       description: |-

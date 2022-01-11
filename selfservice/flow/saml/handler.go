@@ -11,6 +11,7 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
 
@@ -90,9 +91,9 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 }
 
 func (h *Handler) redirectToIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	conf := h.d.Config(r.Context())
+	//conf := h.d.Config(r.Context())
 
-	http.Redirect(w, r, conf.SamlIdpMetadataUrl().Path, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
 
 }
 
@@ -213,10 +214,8 @@ func (h *Handler) NewSamlAuthFlow(w http.ResponseWriter, r *http.Request) {
 
 	if err == ErrNoSession {
 		samlMiddleware.HandleStartAuthFlow(w, r)
-		return
 	}
 
 	samlMiddleware.OnError(w, r, err)
-	return
 
 }

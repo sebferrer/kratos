@@ -2627,12 +2627,35 @@
         "tags": ["v0alpha2"]
       }
     },
-    "/self-service/saml/metadata":{
-      "get":{
+    "/self-service/saml/idp": {
+      "get": {
+        "description": "This endpoint is to redirect the user to the idp auth flow",
+        "operationId": "getUrlIdp",
+        "response": {
+          "302": {
+            "$ref": "#/components/responses/emptyResponse"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/genericError"
+                }
+              }
+            },
+            "description": "genericError"
+          }
+        },
+        "summary": "Redirect the user to the IDP flow",
+        "tags": ["public"]
+      }
+    },
+    "/self-service/saml/metadata": {
+      "get": {
         "description": "This endpoint is for the IDP to obtain kratos metadata",
         "operationId": "getSamlMetadata",
         "response": {
-          "302":{
+          "302": {
             "$ref": "#/components/responses/emptyResponse"
           },
           "500": {
@@ -2647,17 +2670,15 @@
           }
         },
         "summary": "Expose metadata of the SAML Service Provider (Kratos)",
-        "tags": [
-          "public"
-        ]
+        "tags": ["public"]
       }
     },
-    "/self-service/saml/acs":{
-      "get":{
+    "/self-service/saml/acs": {
+      "get": {
         "description": "AssertionConsumerService : handle saml response from the IDP",
         "operationId": "getSamlAcs",
         "response": {
-          "302":{
+          "302": {
             "$ref": "#/components/responses/emptyResponse"
           },
           "500": {
@@ -2672,9 +2693,7 @@
           }
         },
         "summary": "Handle SAML response from the IDP",
-        "tags": [
-          "public"
-        ]
+        "tags": ["public"]
       }
     },
     "/self-service/login": {

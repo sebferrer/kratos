@@ -593,6 +593,38 @@ type V0alpha2Api interface {
 	InitializeSelfServiceRegistrationFlowWithoutBrowserExecute(r V0alpha2ApiApiInitializeSelfServiceRegistrationFlowWithoutBrowserRequest) (*SelfServiceRegistrationFlow, *http.Response, error)
 
 	/*
+			 * InitializeSelfServiceSamlFlowForBrowsers Initialize Login Flow for Browsers
+			 * This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
+		cookies and anti-CSRF measures required for browser-based flows.
+
+		If this endpoint is opened as a link in the browser, it will be redirected to
+		`selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
+		exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
+		`?refresh=true` was set.
+
+		If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
+		case of an error, the `error.id` of the JSON response body can be one of:
+
+		`session_already_available`: The user is already signed in.
+		`session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
+		`security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
+		`security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
+
+		This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+
+		More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+			 * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+			 * @return V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest
+	*/
+	InitializeSelfServiceSamlFlowForBrowsers(ctx context.Context) V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest
+
+	/*
+	 * InitializeSelfServiceSamlFlowForBrowsersExecute executes the request
+	 * @return SelfServiceLoginFlow
+	 */
+	InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceLoginFlow, *http.Response, error)
+
+	/*
 			 * InitializeSelfServiceSettingsFlowForBrowsers Initialize Settings Flow for Browsers
 			 * This endpoint initializes a browser-based user settings flow. Once initialized, the browser will be redirected to
 		`selfservice.flows.settings.ui_url` with the flow ID set as the query parameter `?flow=`. If no valid
@@ -4513,6 +4545,144 @@ func (a *V0alpha2ApiService) InitializeSelfServiceRegistrationFlowWithoutBrowser
 	}
 
 	localVarPath := localBasePath + "/self-service/registration/api"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFormFileName, localVarFileName, localVarFileBytes)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 400 {
+			var v JsonError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v JsonError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.model = v
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
+type V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest struct {
+	ctx        context.Context
+	ApiService V0alpha2Api
+}
+
+func (r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) Execute() (*SelfServiceLoginFlow, *http.Response, error) {
+	return r.ApiService.InitializeSelfServiceSamlFlowForBrowsersExecute(r)
+}
+
+/*
+ * InitializeSelfServiceSamlFlowForBrowsers Initialize Login Flow for Browsers
+ * This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
+cookies and anti-CSRF measures required for browser-based flows.
+
+If this endpoint is opened as a link in the browser, it will be redirected to
+`selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
+exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
+`?refresh=true` was set.
+
+If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
+case of an error, the `error.id` of the JSON response body can be one of:
+
+`session_already_available`: The user is already signed in.
+`session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
+`security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
+`security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
+
+This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+
+More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+ * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ * @return V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest
+*/
+func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsers(ctx context.Context) V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest {
+	return V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest{
+		ApiService: a,
+		ctx:        ctx,
+	}
+}
+
+/*
+ * Execute executes the request
+ * @return SelfServiceLoginFlow
+ */
+func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceLoginFlow, *http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		localVarFormFileName string
+		localVarFileName     string
+		localVarFileBytes    []byte
+		localVarReturnValue  *SelfServiceLoginFlow
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "V0alpha2ApiService.InitializeSelfServiceSamlFlowForBrowsers")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/self-service/saml/idp"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
