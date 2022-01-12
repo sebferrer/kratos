@@ -65,6 +65,7 @@ const (
 	ViperKeySamlPublicCertPath                               = "saml.public_cert_path"
 	ViperKeySamlPrivateKeyPath                               = "saml.private_key_path"
 	ViperKeySamlIdpMetadataUrl                               = "saml.idp_metadata_url"
+	ViperKeySamlIdpSsoUrl                                    = "saml.idp_sso_url"
 	ViperKeySecretsDefault                                   = "secrets.default"
 	ViperKeySecretsCookie                                    = "secrets.cookie"
 	ViperKeySecretsCipher                                    = "secrets.cipher"

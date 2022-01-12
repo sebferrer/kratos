@@ -1378,6 +1378,12 @@
           "description": "The local path of the public certificate of Kratos",
           "type": "string",
           "format": "uri"
+        },
+        "idp_sso_url": {
+          "title": "Path Of Public Certificate",
+          "description": "The local path of the public certificate of Kratos",
+          "type": "string",
+          "format": "uri"
         }
       }
     },

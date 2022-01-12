@@ -6,6 +6,7 @@ saml:
   public_cert_path: "file:///etc/config/kratos/myservice.cert"
   private_key_path: "file:///etc/config/kratos/myservice.key"
   idp_metadata_url: "https://samltest.id/saml/idp"
+  idp_sso_url: "https://samltest.id/idp/profile/SAML2/Redirect/SSO"
 
 serve:
   public:

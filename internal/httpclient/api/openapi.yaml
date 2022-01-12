@@ -1650,7 +1650,7 @@ paths:
       summary: Get Registration Flow
       tags:
       - v0alpha2
-  /self-service/saml/idp:
+  /self-service/saml/browser:
     get:
       description: |-
         This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
