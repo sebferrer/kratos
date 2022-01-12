@@ -74,6 +74,7 @@ type selfServiceSamlUrl struct {
 func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 	h.d.CSRFHandler().IgnorePath(RouteSamlLoginInit)
+	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
 
 	router.GET(RouteSamlMetadata, h.submitMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
@@ -211,6 +212,10 @@ func (h *Handler) instantiateMiddleware(r *http.Request) {
 		IDPMetadata: idpMetadata,
 		SignRequest: true,
 	})
+
+	u, err := url.Parse("http://51.210.126.182:4433/self-service/saml/acs")
+
+	samlMiddleware.ServiceProvider.AcsURL = *u
 
 }
 
