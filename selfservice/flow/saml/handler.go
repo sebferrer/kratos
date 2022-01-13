@@ -150,6 +150,8 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 func (h *Handler) serveAcs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	//conf := h.d.Config(r.Context())
+
 	if samlMiddleware == nil {
 		h.instantiateMiddleware(r)
 	}
@@ -169,11 +171,8 @@ func (h *Handler) serveAcs(w http.ResponseWriter, r *http.Request, ps httprouter
 	assertion, err := samlMiddleware.ServiceProvider.ParseResponse(r, possibleRequestIDs)
 	if err != nil {
 		samlMiddleware.OnError(w, r, err)
-		return
 	}
-
 	samlMiddleware.CreateSessionFromAssertion(w, r, assertion, samlMiddleware.ServiceProvider.DefaultRedirectURI)
-	return
 
 }
 
@@ -216,27 +215,4 @@ func (h *Handler) instantiateMiddleware(r *http.Request) {
 	u, err := url.Parse("http://51.210.126.182:4433/self-service/saml/acs")
 
 	samlMiddleware.ServiceProvider.AcsURL = *u
-
-}
-
-func (h *Handler) initSamlLoginFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	h.NewSamlAuthFlow(w, r)
-}
-
-func (h *Handler) NewSamlAuthFlow(w http.ResponseWriter, r *http.Request) {
-
-	conf := h.d.Config(r.Context())
-
-	session, err := samlMiddleware.Session.GetSession(r)
-
-	if session != nil {
-		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
-	}
-
-	if err == ErrNoSession {
-		samlMiddleware.HandleStartAuthFlow(w, r)
-	}
-
-	samlMiddleware.OnError(w, r, err)
-
 }
