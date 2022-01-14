@@ -212,7 +212,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) {
 		SignRequest: true,
 	})
 
-	u, err := url.Parse("http://51.210.126.182:4433/self-service/saml/acs")
-
+	var publicUrlString = conf.SelfPublicURL().String()
+	var u, _ = url.Parse(publicUrlString + RouteSamlAcs)
 	samlMiddleware.ServiceProvider.AcsURL = *u
 }
