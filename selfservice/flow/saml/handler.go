@@ -92,39 +92,6 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 }
 
 // swagger:route GET /self-service/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
-//
-// Initialize Login Flow for Browsers
-//
-// This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
-// cookies and anti-CSRF measures required for browser-based flows.
-//
-// If this endpoint is opened as a link in the browser, it will be redirected to
-// `selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
-// exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
-// `?refresh=true` was set.
-//
-// If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
-// case of an error, the `error.id` of the JSON response body can be one of:
-//
-// - `session_already_available`: The user is already signed in.
-// - `session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
-// - `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
-// - `security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
-//
-// This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
-//
-// More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
-//
-//     Produces:
-//     - application/json
-//
-//     Schemes: http, https
-//
-//     Responses:
-//       200: selfServiceLoginFlow
-//       302: emptyResponse
-//       400: jsonError
-//       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {
