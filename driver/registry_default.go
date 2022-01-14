@@ -149,7 +149,7 @@ func (m *RegistryDefault) Audit() *logrusx.Logger {
 
 func (m *RegistryDefault) RegisterPublicRoutes(ctx context.Context, router *x.RouterPublic) {
 	m.LoginHandler().RegisterPublicRoutes(router)
-	m.SamlHandler().RegisterPublicRoutes(router)
+	m.SamlHandler(ctx).RegisterPublicRoutes(router)
 	m.RegistrationHandler().RegisterPublicRoutes(router)
 	m.LogoutHandler().RegisterPublicRoutes(router)
 	m.SettingsHandler().RegisterPublicRoutes(router)

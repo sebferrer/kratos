@@ -26,7 +26,6 @@ const (
 	RouteSamlLoginInit = "/self-service/saml/browser"
 )
 
-var samlMiddleware *samlsp.Middleware
 var ErrNoSession = errors.New("saml: session not present")
 
 type (
@@ -42,18 +41,22 @@ type (
 		LogoutHandler() *Handler
 	}
 	Handler struct {
-		d  handlerDependencies
-		dx *decoderx.HTTP
+		d              handlerDependencies
+		dx             *decoderx.HTTP
+		samlMiddleware *samlsp.Middleware
 	}
 )
 
-func NewHandler(d handlerDependencies) *Handler {
-
-	return &Handler{
-		d:  d,
-		dx: decoderx.NewHTTP(),
+func NewHandler(d handlerDependencies, ctx context.Context) *Handler {
+	middleware, err := instantiateMiddleware(d.Config(ctx))
+	if err != nil {
+		panic(err)
 	}
-
+	return &Handler{
+		d:              d,
+		dx:             decoderx.NewHTTP(),
+		samlMiddleware: middleware,
+	}
 }
 
 // swagger:model selfServiceSamlUrl
@@ -83,11 +86,7 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
-	}
-
-	samlMiddleware.ServeMetadata(w, r)
+	h.samlMiddleware.ServeMetadata(w, r)
 
 }
 
@@ -127,16 +126,12 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 //       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
-	}
-
 	conf := h.d.Config(r.Context())
 	_, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
 
 	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 		// No session
-		samlMiddleware.HandleStartAuthFlow(w, r)
+		h.samlMiddleware.HandleStartAuthFlow(w, r)
 	} else if err != nil {
 		// Some other error happened
 	} else {
@@ -144,75 +139,75 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
 	}
 
-	samlMiddleware.OnError(w, r, err)
+	h.samlMiddleware.OnError(w, r, err)
 
 }
 
 func (h *Handler) serveAcs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	//conf := h.d.Config(r.Context())
-
-	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
-	}
-
 	r.ParseForm()
 
 	possibleRequestIDs := []string{}
-	if samlMiddleware.ServiceProvider.AllowIDPInitiated {
+	if h.samlMiddleware.ServiceProvider.AllowIDPInitiated {
 		possibleRequestIDs = append(possibleRequestIDs, "")
 	}
 
-	trackedRequests := samlMiddleware.RequestTracker.GetTrackedRequests(r)
+	trackedRequests := h.samlMiddleware.RequestTracker.GetTrackedRequests(r)
 	for _, tr := range trackedRequests {
 		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
 	}
 
-	assertion, err := samlMiddleware.ServiceProvider.ParseResponse(r, possibleRequestIDs)
+	assertion, err := h.samlMiddleware.ServiceProvider.ParseResponse(r, possibleRequestIDs)
 	if err != nil {
-		samlMiddleware.OnError(w, r, err)
+		h.samlMiddleware.OnError(w, r, err)
 	}
-	samlMiddleware.CreateSessionFromAssertion(w, r, assertion, samlMiddleware.ServiceProvider.DefaultRedirectURI)
+	h.samlMiddleware.CreateSessionFromAssertion(w, r, assertion, h.samlMiddleware.ServiceProvider.DefaultRedirectURI)
 
 }
 
-func (h *Handler) instantiateMiddleware(r *http.Request) {
-
-	conf := h.d.Config(r.Context())
+func instantiateMiddleware(conf *config.Config) (*samlsp.Middleware, error) {
 
 	keyPair, err := tls.LoadX509KeyPair(conf.SamlPublicCertPath().Path, conf.SamlPrivateKeyPath().Path)
 	if err != nil {
-		panic(err) // TODO handle error
+		return nil, err
 	}
 	keyPair.Leaf, err = x509.ParseCertificate(keyPair.Certificate[0])
 	if err != nil {
-		panic(err) // TODO handle error
+		return nil, err
 	}
 
 	idpMetadataURL, err := url.Parse(conf.SamlIdpMetadataUrl().String())
 	if err != nil {
-		panic(err) // TODO handle error
+		return nil, err
 	}
 	idpMetadata, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient,
 		*idpMetadataURL)
 	if err != nil {
-		panic(err) // TODO handle error
+		return nil, err
 	}
 
 	rootURL, err := url.Parse(conf.SelfServiceBrowserDefaultReturnTo().String())
 	if err != nil {
-		panic(err) // TODO handle error
+		return nil, err
 	}
 
-	samlMiddleware, _ = samlsp.New(samlsp.Options{
+	samlMiddleware, err := samlsp.New(samlsp.Options{
 		URL:         *rootURL,
 		Key:         keyPair.PrivateKey.(*rsa.PrivateKey),
 		Certificate: keyPair.Leaf,
 		IDPMetadata: idpMetadata,
 		SignRequest: true,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	var publicUrlString = conf.SelfPublicURL().String()
-	var u, _ = url.Parse(publicUrlString + RouteSamlAcs)
+	u, err := url.Parse(publicUrlString + RouteSamlAcs)
+	if err != nil {
+		return nil, err
+	}
 	samlMiddleware.ServiceProvider.AcsURL = *u
+
+	return samlMiddleware, nil
 }
