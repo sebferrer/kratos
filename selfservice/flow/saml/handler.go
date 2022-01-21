@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
@@ -46,6 +47,16 @@ type (
 		samlMiddleware *samlsp.Middleware
 	}
 )
+
+type CookieSessionProvider struct {
+	Name     string
+	Domain   string
+	HTTPOnly bool
+	Secure   bool
+	SameSite http.SameSite
+	MaxAge   time.Duration
+	Codec    samlsp.SessionCodec
+}
 
 func NewHandler(d handlerDependencies, ctx context.Context) *Handler {
 	middleware, err := instantiateMiddleware(d.Config(ctx))
@@ -96,17 +107,27 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	conf := h.d.Config(r.Context())
 	_, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
 
-	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
-		// No session
-		h.samlMiddleware.HandleStartAuthFlow(w, r)
-	} else if err != nil {
-		// Some other error happened
-	} else {
-		// A session exists already
+	session, err := h.samlMiddleware.Session.GetSession(r)
+
+	if session != nil {
 		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
 	}
+	if err == ErrNoSession {
+		h.samlMiddleware.HandleStartAuthFlow(w, r)
+		return
+	}
 
-	h.samlMiddleware.OnError(w, r, err)
+	//if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
+	// No session
+	//h.samlMiddleware.HandleStartAuthFlow(w, r)
+	//} else if err != nil {
+	// Some other error happened
+	//} else {
+	// A session exists already
+	//http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
+	//}
+
+	//h.samlMiddleware.OnError(w, r, err)
 
 }
 
