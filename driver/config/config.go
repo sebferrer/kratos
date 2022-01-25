@@ -834,6 +834,10 @@ func (p *Config) SamlPublicCertPath() *url.URL {
 	return p.ParseURIOrFail(ViperKeySamlPublicCertPath)
 }
 
+func (p *Config) SamlIdpSsoUrl() *url.URL {
+	return p.ParseURIOrFail(ViperKeySamlIdpSsoUrl)
+}
+
 func (p *Config) SamlPrivateKeyPath() *url.URL {
 	return p.ParseURIOrFail(ViperKeySamlPrivateKeyPath)
 }

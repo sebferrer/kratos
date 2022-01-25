@@ -8,24 +8,41 @@ import (
 	"github.com/crewjam/saml/samlsp"
 )
 
-type ProviderSaml struct {
-	metadataUrl *url.URL
-	idpSsoUrl   *url.URL
+type ProviderSAML struct {
+	idpMetadataUrl *url.URL
+	idpSsoUrl      *url.URL
+	config         *Configuration
 }
 
-func (d *ProviderSaml) Claims(ctx context.Context, samlAttribute samlsp.Attributes) (*Claims, error) {
+func NewProviderSAML(
+	idpMetadataUrl *url.URL,
+	idpSsoUrl *url.URL,
+	config *Configuration,
+) *ProviderSAML {
+	return &ProviderSAML{
+		idpMetadataUrl: idpMetadataUrl,
+		idpSsoUrl:      idpSsoUrl,
+		config:         config,
+	}
+}
+
+func (d *ProviderSAML) Claims(ctx context.Context, SAMLAttribute samlsp.Attributes) (*Claims, error) {
 
 	claims := &Claims{
 		Issuer:            "saml",
-		Subject:           samlAttribute.Get("id"),
-		Name:              fmt.Sprintf("%s#%s", samlAttribute.Get("username"), samlAttribute.Get("discriminator")),
-		Nickname:          samlAttribute.Get("username"),
-		PreferredUsername: samlAttribute.Get("username"),
-		Picture:           samlAttribute.Get("avatar"),
-		Email:             samlAttribute.Get("email"),
+		Subject:           SAMLAttribute.Get("id"),
+		Name:              fmt.Sprintf("%s#%s", SAMLAttribute.Get("username"), SAMLAttribute.Get("discriminator")),
+		Nickname:          SAMLAttribute.Get("username"),
+		PreferredUsername: SAMLAttribute.Get("username"),
+		Picture:           SAMLAttribute.Get("avatar"),
+		Email:             SAMLAttribute.Get("email"),
 		EmailVerified:     true,
-		Locale:            samlAttribute.Get("locale"),
+		Locale:            SAMLAttribute.Get("locale"),
 	}
 
 	return claims, nil
+}
+
+func (d *ProviderSAML) Config() *Configuration {
+	return d.config
 }

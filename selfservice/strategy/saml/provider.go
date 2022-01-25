@@ -8,7 +8,8 @@ import (
 )
 
 type Provider interface {
-	Claims(ctx context.Context, samlAttribute samlsp.Attributes) (*Claims, error)
+	Claims(ctx context.Context, SAMLAttribute samlsp.Attributes) (*Claims, error)
+	Config() *Configuration
 }
 
 // ConvertibleBoolean is used as Apple casually sends the email_verified field as a string.

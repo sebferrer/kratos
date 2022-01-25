@@ -14,7 +14,7 @@ type CredentialsConfig struct {
 	Providers []ProviderCredentialsConfig `json:"providers"`
 }
 
-func NewCredentialsForSaml(subject string) (*identity.Credentials, error) {
+func NewCredentialsForSAML(subject string) (*identity.Credentials, error) {
 	var b bytes.Buffer
 	if err := json.NewEncoder(&b).Encode(CredentialsConfig{
 		Providers: []ProviderCredentialsConfig{
