@@ -72,11 +72,8 @@ type SubmitSelfServiceLoginFlowWithOidcMethodBody struct {
 }
 
 func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, token *oauth2.Token, claims *Claims, provider Provider, container *authCodeContainer) (*registration.Flow, error) {
-	//on recupère une identité avec un credential (claim) mais je sais pas encore ce que c'est (peut être réutiliser la même méthode avec un email saml ou quelque chose comme ça)
 	i, c, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeOIDC, uid(provider.Config().ID, claims.Subject))
-	//il y a une erreur
 	if err != nil {
-		//aucun compte de trouvé
 		if errors.Is(err, sqlcon.ErrNoRows) {
 			// If no account was found we're "manually" creating a new registration flow and redirecting the browser
 			// to that endpoint.
@@ -113,13 +110,10 @@ func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, errors.WithStack(herodot.ErrInternalServerError.WithReason("The password credentials could not be decoded properly").WithDebug(err.Error())))
 	}
 
-	//On creer une session inactive
 	sess := session.NewInactiveSession()
 
-	//On ajoute la méthode de creation de session a la liste associee au compte
 	sess.CompletedLoginFor(s.ID())
 
-	//On boucle sur tous les providers
 	for _, c := range o.Providers {
 		if c.Subject == claims.Subject && c.Provider == provider.Config().ID {
 			if err = s.d.LoginHookExecutor().PostLoginHook(w, r, a, i, sess); err != nil {
@@ -132,7 +126,6 @@ func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login
 	return nil, s.handleError(w, r, a, provider.Config().ID, nil, errors.WithStack(herodot.ErrInternalServerError.WithReason("Unable to find matching OpenID Connect Credentials.").WithDebugf(`Unable to find credentials that match the given provider "%s" and subject "%s".`, provider.Config().ID, claims.Subject)))
 }
 
-//experimental
 func (s *Strategy) Login(w http.ResponseWriter, r *http.Request, f *login.Flow, ss *session.Session) (i *identity.Identity, err error) {
 	if err := login.CheckAAL(f, identity.AuthenticatorAssuranceLevel1); err != nil {
 		return nil, err

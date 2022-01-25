@@ -11,6 +11,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/ory/herodot"
+	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/ui/container"
 	"github.com/ory/kratos/ui/node"
 	"github.com/pkg/errors"
@@ -34,6 +35,14 @@ import (
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/x"
 )
+
+const (
+	RouteBase = "/self-service/saml/"
+
+	RouteCallback = RouteBase + "/acs"
+)
+
+var _ identity.ActiveCredentialsCounter = new(Strategy)
 
 type registrationStrategyDependencies interface {
 	x.LoggingProvider
@@ -139,13 +148,11 @@ func uid(provider, subject string) string {
 	return fmt.Sprintf("%s:%s", provider, subject)
 }
 
-func (s *Strategy) RegisterLoginRoutes(r *x.RouterPublic) {
-	s.setRoutes(r)
-}
-
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
-	strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
-
+	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
+	if handle, _, _ := r.Lookup("GET", RouteCallback); handle == nil {
+		r.GET(RouteCallback, wrappedHandleCallback)
+	}
 }
 
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -198,7 +205,6 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		//	WithDetailf("cause", "Unexpected type in OpenID Connect flow: %T", a))))
 		return
 	}
-
 }
 
 func (s *Strategy) provider(ctx context.Context, r *http.Request) (Provider, error) {
@@ -211,6 +217,9 @@ func (s *Strategy) provider(ctx context.Context, r *http.Request) (Provider, err
 		return provider, nil
 	}
 
+}
+func (s *Strategy) NodeGroup() node.Group {
+	return node.SAMLGroup
 }
 
 func (s *Strategy) Config(ctx context.Context) (*ConfigurationCollection, error) {
@@ -291,4 +300,17 @@ func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flo
 	}
 
 	return req, &cntnr, nil
+}
+
+func (s *Strategy) populateMethod(r *http.Request, c *container.Container, message func(provider string) *text.Message) error {
+	_, err := s.Config(r.Context())
+	if err != nil {
+		return err
+	}
+
+	// does not need sorting because there is only one field
+	c.SetCSRF(s.d.GenerateCSRFToken(r))
+	//AddSamlProviders(c, conf.Providers, message)
+
+	return nil
 }

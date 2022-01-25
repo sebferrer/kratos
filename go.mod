@@ -92,7 +92,6 @@ require (
 	github.com/tidwall/gjson v1.9.4
 	github.com/tidwall/sjson v1.2.2
 	github.com/urfave/negroni v1.0.0
-	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/zmb3/spotify/v2 v2.0.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/net v0.0.0-20211020060615-d418f374d309
