@@ -1,4 +1,4 @@
-package saml
+package strategy
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gofrs/uuid"
@@ -29,17 +30,21 @@ import (
 	"github.com/ory/kratos/selfservice/errorx"
 	"github.com/ory/kratos/selfservice/flow"
 	"github.com/ory/kratos/selfservice/flow/login"
+
 	"github.com/ory/kratos/selfservice/flow/registration"
+	samlflow "github.com/ory/kratos/selfservice/flow/saml"
 	"github.com/ory/kratos/selfservice/flow/settings"
 	"github.com/ory/kratos/selfservice/strategy"
+	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/x"
 )
 
 const (
-	RouteBase = "/self-service/saml/"
+	RouteBase = "/self-service/methods/saml"
 
-	RouteCallback = RouteBase + "/acs"
+	RouteAcs  = RouteBase + "/acs"
+	RouteAuth = RouteBase + "/browser"
 )
 
 var _ identity.ActiveCredentialsCounter = new(Strategy)
@@ -150,13 +155,57 @@ func uid(provider, subject string) string {
 
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
-	if handle, _, _ := r.Lookup("GET", RouteCallback); handle == nil {
-		r.GET(RouteCallback, wrappedHandleCallback)
+	if handle, _, _ := r.Lookup("POST", RouteAcs); handle == nil {
+		r.POST(RouteAcs, wrappedHandleCallback)
+	} //ACS SUPPORT
+}
+
+func (s *Strategy) getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
+
+	r.ParseForm()
+
+	possibleRequestIDs := []string{}
+	if m.ServiceProvider.AllowIDPInitiated {
+		possibleRequestIDs = append(possibleRequestIDs, "")
 	}
+
+	trackedRequests := m.RequestTracker.GetTrackedRequests(r)
+	for _, tr := range trackedRequests {
+		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
+	}
+
+	assertion, err := m.ServiceProvider.ParseResponse(r, possibleRequestIDs)
+	if err != nil {
+		m.OnError(w, r, err)
+		return nil, err
+	}
+
+	attributes := map[string][]string{}
+
+	for _, attributeStatement := range assertion.AttributeStatements {
+		for _, attr := range attributeStatement.Attributes {
+			claimName := attr.FriendlyName
+			if claimName == "" {
+				claimName = attr.Name
+			}
+			for _, value := range attr.Values {
+				attributes[claimName] = append(attributes[claimName], value.Value)
+			}
+		}
+	}
+
+	return attributes, nil
+
 }
 
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	m := *samlflow.GetMiddleware()
+
+	attributes, err := s.getAttributesFromAssertion(w, r, m)
+	if err != nil {
+
+	}
 	provider, err := s.provider(r.Context(), r)
 	if err != nil {
 		//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
@@ -171,21 +220,17 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		}
 		return
 	}
-	session := samlsp.SessionFromContext(r.Context())
-	sessionWithAttributes := session.(samlsp.SessionWithAttributes)
-	attributes := sessionWithAttributes.GetAttributes()
 
 	claims, err := provider.Claims(r.Context(), attributes)
 	if err != nil {
 		//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
 		//return
 	}
-
 	switch a := req.(type) {
 	case *login.Flow:
 		if ff, err := s.processLogin(w, r, a, provider, claims); err != nil {
 			if ff != nil {
-				//		s.forwardError(w, r, ff, err)
+				// s.forwardError(w, r, ff, err)
 				return
 			}
 			//	s.forwardError(w, r, a, err)
@@ -207,23 +252,36 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 	}
 }
 
-func (s *Strategy) provider(ctx context.Context, r *http.Request) (Provider, error) {
-
-	if c, err := s.Config(ctx); err != nil {
+func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
+	c, err := s.Config(ctx)
+	if err != nil {
 		return nil, err
-	} else if provider, err := c.Provider(s.d.Config(r.Context()).SamlIdpMetadataUrl(), s.d.Config(r.Context()).SamlIdpSsoUrl()); err != nil {
-		return nil, err
-	} else {
-		return provider, nil
 	}
+
+	IDPMetadataURL, err := url.Parse(c.SAMLProviders[0].IDPMetadataURL)
+	if err != nil {
+		return nil, err
+	}
+
+	IDPSSOURL, err := url.Parse(c.SAMLProviders[0].IDPSSOURL)
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := c.Provider(IDPMetadataURL, IDPSSOURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return provider, nil
 
 }
 func (s *Strategy) NodeGroup() node.Group {
 	return node.SAMLGroup
 }
 
-func (s *Strategy) Config(ctx context.Context) (*ConfigurationCollection, error) {
-	var c ConfigurationCollection
+func (s *Strategy) Config(ctx context.Context) (*samlstrategy.ConfigurationCollection, error) {
+	var c samlstrategy.ConfigurationCollection
 
 	conf := s.d.Config(ctx).SelfServiceStrategy(string(s.ID())).Config
 	if err := jsonx.
@@ -243,7 +301,7 @@ func (s *Strategy) validateFlow(ctx context.Context, r *http.Request, rid uuid.U
 
 	if ar, err := s.d.RegistrationFlowPersister().GetRegistrationFlow(ctx, rid); err == nil {
 		if ar.Type != flow.TypeBrowser {
-			return ar, ErrAPIFlowNotSupported
+			return ar, samlstrategy.ErrAPIFlowNotSupported
 		}
 
 		if err := ar.Valid(); err != nil {
@@ -254,7 +312,7 @@ func (s *Strategy) validateFlow(ctx context.Context, r *http.Request, rid uuid.U
 
 	if ar, err := s.d.LoginFlowPersister().GetLoginFlow(ctx, rid); err == nil {
 		if ar.Type != flow.TypeBrowser {
-			return ar, ErrAPIFlowNotSupported
+			return ar, samlstrategy.ErrAPIFlowNotSupported
 		}
 
 		if err := ar.Valid(); err != nil {
@@ -266,7 +324,7 @@ func (s *Strategy) validateFlow(ctx context.Context, r *http.Request, rid uuid.U
 	ar, err := s.d.SettingsFlowPersister().GetSettingsFlow(ctx, rid)
 	if err == nil {
 		if ar.Type != flow.TypeBrowser {
-			return ar, ErrAPIFlowNotSupported
+			return ar, samlstrategy.ErrAPIFlowNotSupported
 		}
 
 		sess, err := s.d.SessionManager().FetchFromRequest(ctx, r)

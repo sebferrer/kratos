@@ -13,7 +13,19 @@ type Configuration struct {
 
 	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
 	// If set, neither `auth_url` nor `token_url` are required.
-	IssuerURL string `json:"issuer_url"`
+	PublicCertPath string `json:"public_cert_path"`
+
+	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
+	// If set, neither `auth_url` nor `token_url` are required.
+	PrivateKeyPath string `json:"private_key_path"`
+
+	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
+	// If set, neither `auth_url` nor `token_url` are required.
+	IDPMetadataURL string `json:"idp_metadata_url"`
+
+	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
+	// If set, neither `auth_url` nor `token_url` are required.
+	IDPSSOURL string `json:"idp_sso_url"`
 
 	// Mapper specifies the JSONNet code snippet which uses the OpenID Connect Provider's data (e.g. GitHub or Google
 	// profile information) to hydrate the identity's data.
@@ -23,10 +35,10 @@ type Configuration struct {
 }
 
 type ConfigurationCollection struct {
-	SAMLProviders Configuration `json:"saml"`
+	SAMLProviders []Configuration `json:"providers"`
 }
 
 func (c ConfigurationCollection) Provider(idpMetadataUrl *url.URL, idpSsoUrl *url.URL) (Provider, error) {
-	return NewProviderSAML(idpMetadataUrl, idpSsoUrl, &c.SAMLProviders), nil
+	return NewProviderSAML(idpMetadataUrl, idpSsoUrl, &c.SAMLProviders[0]), nil
 
 }

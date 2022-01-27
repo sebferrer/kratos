@@ -1,14 +1,16 @@
 package saml
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
@@ -16,18 +18,22 @@ import (
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
 
+	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
+
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/x"
 	"github.com/ory/x/decoderx"
+	"github.com/ory/x/jsonx"
 )
 
 const (
 	RouteSamlMetadata  = "/self-service/saml/metadata"
-	RouteSamlAcs       = "/self-service/saml/acs"
 	RouteSamlLoginInit = "/self-service/saml/browser"
+	RouteSamlAcs       = "/self-service/methods/saml/acs"
 )
 
 var ErrNoSession = errors.New("saml: session not present")
+var samlMiddleware *samlsp.Middleware
 
 type (
 	handlerDependencies interface {
@@ -42,9 +48,8 @@ type (
 		LogoutHandler() *Handler
 	}
 	Handler struct {
-		d              handlerDependencies
-		dx             *decoderx.HTTP
-		samlMiddleware *samlsp.Middleware
+		d  handlerDependencies
+		dx *decoderx.HTTP
 	}
 )
 
@@ -58,15 +63,10 @@ type CookieSessionProvider struct {
 	Codec    samlsp.SessionCodec
 }
 
-func NewHandler(d handlerDependencies, ctx context.Context) *Handler {
-	middleware, err := instantiateMiddleware(d.Config(ctx))
-	if err != nil {
-		panic(err)
-	}
+func NewHandler(d handlerDependencies) *Handler {
 	return &Handler{
-		d:              d,
-		dx:             decoderx.NewHTTP(),
-		samlMiddleware: middleware,
+		d:  d,
+		dx: decoderx.NewHTTP(),
 	}
 }
 
@@ -92,70 +92,54 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 	router.GET(RouteSamlMetadata, h.submitMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
-	router.POST(RouteSamlAcs, h.serveAcs)
 }
 
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	h.samlMiddleware.ServeMetadata(w, r)
+	if samlMiddleware == nil {
+		h.instantiateMiddleware(r)
+	}
+
+	samlMiddleware.ServeMetadata(w, r)
 
 }
 
 // swagger:route GET /self-service/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	if samlMiddleware == nil {
+		h.instantiateMiddleware(r)
+	}
+
 	conf := h.d.Config(r.Context())
+
 	_, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
-
-	session, err := h.samlMiddleware.Session.GetSession(r)
-
-	if session != nil {
-		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
-	}
-	if err == ErrNoSession {
-		h.samlMiddleware.HandleStartAuthFlow(w, r)
+	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
+		// No session exists yet
+		samlMiddleware.HandleStartAuthFlow(w, r)
 		return
+
+	} else {
+
+		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
+
 	}
-
-	//if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
-	// No session
-	//h.samlMiddleware.HandleStartAuthFlow(w, r)
-	//} else if err != nil {
-	// Some other error happened
-	//} else {
-	// A session exists already
-	//http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
-	//}
-
-	//h.samlMiddleware.OnError(w, r, err)
 
 }
 
-func (h *Handler) serveAcs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Handler) instantiateMiddleware(r *http.Request) (*samlsp.Middleware, error) {
+	config := h.d.Config(r.Context())
 
-	r.ParseForm()
+	var c samlstrategy.ConfigurationCollection
 
-	possibleRequestIDs := []string{}
-	if h.samlMiddleware.ServiceProvider.AllowIDPInitiated {
-		possibleRequestIDs = append(possibleRequestIDs, "")
+	conf := config.SelfServiceStrategy("saml").Config
+	if err := jsonx.
+		NewStrictDecoder(bytes.NewBuffer(conf)).
+		Decode(&c); err != nil {
+		return nil, errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
-	trackedRequests := h.samlMiddleware.RequestTracker.GetTrackedRequests(r)
-	for _, tr := range trackedRequests {
-		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
-	}
-
-	assertion, err := h.samlMiddleware.ServiceProvider.ParseResponse(r, possibleRequestIDs)
-	if err != nil {
-		h.samlMiddleware.OnError(w, r, err)
-	}
-	h.samlMiddleware.CreateSessionFromAssertion(w, r, assertion, h.samlMiddleware.ServiceProvider.DefaultRedirectURI)
-
-}
-
-func instantiateMiddleware(conf *config.Config) (*samlsp.Middleware, error) {
-
-	keyPair, err := tls.LoadX509KeyPair(conf.SamlPublicCertPath().Path, conf.SamlPrivateKeyPath().Path)
+	keyPair, err := tls.LoadX509KeyPair(c.SAMLProviders[0].PublicCertPath, c.SAMLProviders[0].PrivateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -164,17 +148,18 @@ func instantiateMiddleware(conf *config.Config) (*samlsp.Middleware, error) {
 		return nil, err
 	}
 
-	idpMetadataURL, err := url.Parse(conf.SamlIdpMetadataUrl().String())
+	idpMetadataURL, err := url.Parse(c.SAMLProviders[0].IDPMetadataURL)
 	if err != nil {
 		return nil, err
 	}
+
 	idpMetadata, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient,
 		*idpMetadataURL)
 	if err != nil {
 		return nil, err
 	}
 
-	rootURL, err := url.Parse(conf.SelfServiceBrowserDefaultReturnTo().String())
+	rootURL, err := url.Parse(config.SelfServiceBrowserDefaultReturnTo().String())
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +175,7 @@ func instantiateMiddleware(conf *config.Config) (*samlsp.Middleware, error) {
 		return nil, err
 	}
 
-	var publicUrlString = conf.SelfPublicURL().String()
+	var publicUrlString = config.SelfPublicURL().String()
 	u, err := url.Parse(publicUrlString + RouteSamlAcs)
 	if err != nil {
 		return nil, err
@@ -198,4 +183,8 @@ func instantiateMiddleware(conf *config.Config) (*samlsp.Middleware, error) {
 	samlMiddleware.ServiceProvider.AcsURL = *u
 
 	return samlMiddleware, nil
+}
+
+func GetMiddleware() *samlsp.Middleware {
+	return samlMiddleware
 }

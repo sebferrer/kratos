@@ -1,4 +1,4 @@
-package saml
+package strategy
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"github.com/ory/kratos/selfservice/flow"
 	"github.com/ory/kratos/selfservice/flow/login"
 	"github.com/ory/kratos/selfservice/flow/registration"
+	samlsp "github.com/ory/kratos/selfservice/strategy/saml"
+
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
 	"github.com/tidwall/gjson"
@@ -34,7 +36,7 @@ func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registrat
 	return nil
 }
 
-func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, provider Provider, claims *Claims) (*login.Flow, error) {
+func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*login.Flow, error) {
 
 	if _, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeOIDC, claims.Subject); err == nil { //We check if the user is present in the DB
 

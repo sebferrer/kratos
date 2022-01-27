@@ -299,6 +299,82 @@
         }
       }
     },
+    "selfServiceSAMLProvider": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "examples": [
+            "activedirectory1"
+          ]
+        },
+        "label": {
+          "title": "Optional string which will be used when generating labels for UI buttons.",
+          "type": "string"
+        },
+        "public_cert_path": {
+          "title": "Public Certificate Path",
+          "description": "/",
+          "type": "string",
+          "examples": [
+            "file://path/to/oidc.jsonnet",
+            "https://foo.bar.com/path/to/oidc.jsonnet"
+          ]
+        },
+        "private_key_path": {
+          "title": "Private Certificate Path",
+          "description": "/",
+          "type": "string",
+          "examples": [
+            "file://path/to/oidc.jsonnet",
+            "https://foo.bar.com/path/to/oidc.jsonnet"
+          ]
+        },
+        "idp_metadata_url": {
+          "title": "IdentityProvider Metadata URL",
+          "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
+          "type": "string",
+          "format": "uri",
+          "examples": [
+            "file://path/to/oidc.jsonnet",
+            "https://foo.bar.com/path/to/oidc.jsonnet",
+            "base64://bG9jYWwgc3ViamVjdCA9I..."
+          ]
+        },
+        "idp_sso_url": {
+          "title": "IdentityProvider SingleSignOn URL",
+          "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
+          "type": "string",
+          "format": "uri",
+          "examples": [
+            "file://path/to/oidc.jsonnet",
+            "https://foo.bar.com/path/to/oidc.jsonnet",
+            "base64://bG9jYWwgc3ViamVjdCA9I..."
+          ]
+        },
+        "mapper_url": {
+          "title": "Jsonnet Mapper URL",
+          "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
+          "type": "string",
+          "format": "uri",
+          "examples": [
+            "file://path/to/oidc.jsonnet",
+            "https://foo.bar.com/path/to/oidc.jsonnet",
+            "base64://bG9jYWwgc3ViamVjdCA9I..."
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "public_cert_path",
+        "private_key_path",
+        "idp_metadata_url",
+        "idp_sso_url",
+        "mapper_url"
+      ]
+    },
     "selfServiceOIDCProvider": {
       "type": "object",
       "properties": {
@@ -1258,6 +1334,35 @@
                 ]
               }
             },
+            "saml": {
+              "type": "object",
+              "title": "Specify SAML configuration",
+              "showEnvVarBlockForObject": true,
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "title": "Enables SAML Authentication Method",
+                  "default": false
+                },
+                "config": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "providers": {
+                      "title": "SAML Provider",
+                      "description": "A list and configuration of OAuth2 and OpenID Connect providers Ory Kratos should integrate with.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/selfServiceSAMLProvider"
+                      }
+                    }
+                  }
+
+
+                }
+              }
+            },
             "oidc": {
               "type": "object",
               "title": "Specify OpenID Connect and OAuth2 Configuration",
@@ -1370,35 +1475,6 @@
         "smtp"
       ],
       "additionalProperties": false
-    },
-    "saml": {
-      "type": "object",
-      "properties": {
-        "public_cert_path": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "private_key_path": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "idp_metadata_url": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        },
-        "idp_sso_url": {
-          "title": "Path Of Public Certificate",
-          "description": "The local path of the public certificate of Kratos",
-          "type": "string",
-          "format": "uri"
-        }
-      }
     },
     "serve": {
       "type": "object",

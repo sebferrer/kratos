@@ -1,4 +1,4 @@
-package saml
+package strategy
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"github.com/ory/kratos/identity"
 	"github.com/ory/kratos/ui/container"
 	"github.com/ory/kratos/x"
+
+	//saml "github.com/ory/kratos/selfservice/strategy/saml/strategy"
 	"github.com/pkg/errors"
 )
 

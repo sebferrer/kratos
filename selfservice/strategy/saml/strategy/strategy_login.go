@@ -1,4 +1,4 @@
-package saml
+package strategy
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"github.com/ory/kratos/selfservice/flow"
 	"github.com/ory/kratos/selfservice/flow/login"
 	"github.com/ory/kratos/selfservice/flow/registration"
+	samlsp "github.com/ory/kratos/selfservice/strategy/saml"
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
@@ -20,7 +21,7 @@ func (s *Strategy) RegisterLoginRoutes(r *x.RouterPublic) {
 	s.setRoutes(r)
 }
 
-func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider Provider, claims *Claims) (*registration.Flow, error) {
+func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*registration.Flow, error) {
 	i, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeSAML, claims.Subject) //We retrieve the identity from the DB
 
 	if err != nil {

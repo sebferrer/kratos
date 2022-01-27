@@ -39,6 +39,7 @@ import (
 	"github.com/ory/kratos/selfservice/hook"
 	"github.com/ory/kratos/selfservice/strategy/link"
 	"github.com/ory/kratos/selfservice/strategy/profile"
+	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml/strategy"
 	"github.com/ory/kratos/x"
 
 	"github.com/cenkalti/backoff"
@@ -153,7 +154,7 @@ func (m *RegistryDefault) Audit() *logrusx.Logger {
 
 func (m *RegistryDefault) RegisterPublicRoutes(ctx context.Context, router *x.RouterPublic) {
 	m.LoginHandler().RegisterPublicRoutes(router)
-	m.SamlHandler(ctx).RegisterPublicRoutes(router)
+	m.SamlHandler().RegisterPublicRoutes(router)
 	m.RegistrationHandler().RegisterPublicRoutes(router)
 	m.LogoutHandler().RegisterPublicRoutes(router)
 	m.SettingsHandler().RegisterPublicRoutes(router)
@@ -280,6 +281,7 @@ func (m *RegistryDefault) selfServiceStrategies() []interface{} {
 		m.selfserviceStrategies = []interface{}{
 			password2.NewStrategy(m),
 			oidc.NewStrategy(m),
+			samlstrategy.NewStrategy(m),
 			profile.NewStrategy(m),
 			link.NewStrategy(m),
 			totp.NewStrategy(m),
