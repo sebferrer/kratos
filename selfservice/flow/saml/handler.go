@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	RouteSamlMetadata  = "/self-service/saml/metadata"
-	RouteSamlLoginInit = "/self-service/saml/browser"
+	RouteSamlMetadata  = "/self-service/methods/saml/metadata"
+	RouteSamlLoginInit = "/self-service/methods/saml/browser"
 	RouteSamlAcs       = "/self-service/methods/saml/acs"
 )
 
@@ -108,7 +108,9 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
+		if err := h.instantiateMiddleware(r); err != nil {
+			panic(err)
+		}
 	}
 
 	conf := h.d.Config(r.Context())
@@ -127,7 +129,7 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 }
 
-func (h *Handler) instantiateMiddleware(r *http.Request) (*samlsp.Middleware, error) {
+func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	config := h.d.Config(r.Context())
 
 	var c samlstrategy.ConfigurationCollection
@@ -136,35 +138,35 @@ func (h *Handler) instantiateMiddleware(r *http.Request) (*samlsp.Middleware, er
 	if err := jsonx.
 		NewStrictDecoder(bytes.NewBuffer(conf)).
 		Decode(&c); err != nil {
-		return nil, errors.Wrapf(err, "Unable to decode config %v", string(conf))
+		return errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
 	keyPair, err := tls.LoadX509KeyPair(c.SAMLProviders[0].PublicCertPath, c.SAMLProviders[0].PrivateKeyPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	keyPair.Leaf, err = x509.ParseCertificate(keyPair.Certificate[0])
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	idpMetadataURL, err := url.Parse(c.SAMLProviders[0].IDPMetadataURL)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	idpMetadata, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient,
 		*idpMetadataURL)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rootURL, err := url.Parse(config.SelfServiceBrowserDefaultReturnTo().String())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	samlMiddleware, err := samlsp.New(samlsp.Options{
+	samlMiddleWare, err := samlsp.New(samlsp.Options{
 		URL:         *rootURL,
 		Key:         keyPair.PrivateKey.(*rsa.PrivateKey),
 		Certificate: keyPair.Leaf,
@@ -172,17 +174,19 @@ func (h *Handler) instantiateMiddleware(r *http.Request) (*samlsp.Middleware, er
 		SignRequest: true,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var publicUrlString = config.SelfPublicURL().String()
 	u, err := url.Parse(publicUrlString + RouteSamlAcs)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	samlMiddleware.ServiceProvider.AcsURL = *u
+	samlMiddleWare.ServiceProvider.AcsURL = *u
 
-	return samlMiddleware, nil
+	samlMiddleware = samlMiddleWare
+
+	return nil
 }
 
 func GetMiddleware() *samlsp.Middleware {
