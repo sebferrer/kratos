@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -114,10 +115,14 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 
 	conf := h.d.Config(r.Context())
+	fmt.Println("YOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
 
 	_, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
 	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 		// No session exists yet
+		fmt.Println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
+		fmt.Println(r.URL.Query())
+		fmt.Println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
 		samlMiddleware.HandleStartAuthFlow(w, r)
 		return
 
