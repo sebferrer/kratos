@@ -99,6 +99,7 @@ func (e *HookExecutor) PostRegistrationHook(w http.ResponseWriter, r *http.Reque
 					WithField("identity_id", i.ID).
 					WithField("flow_method", ct).
 					Debug("A ExecutePostRegistrationPrePersistHook hook aborted early.")
+
 				return nil
 			}
 			return err

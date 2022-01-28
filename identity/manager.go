@@ -65,7 +65,6 @@ func (m *Manager) Create(ctx context.Context, i *Identity, opts ...ManagerOption
 	if err := m.validate(ctx, i, o); err != nil {
 		return err
 	}
-
 	return m.r.IdentityPool().(PrivilegedPool).CreateIdentity(ctx, i)
 }
 

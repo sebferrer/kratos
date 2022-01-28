@@ -204,51 +204,41 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 
 	attributes, err := s.getAttributesFromAssertion(w, r, m)
 	if err != nil {
-
-	}
-	provider, err := s.provider(r.Context(), r)
-	if err != nil {
-		//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
+		s.forwardError(w, r, nil, err)
 		return
 	}
-	req, _, err := s.validateCallback(w, r)
+
+	provider, err := s.provider(r.Context(), r)
 	if err != nil {
-		if req != nil {
-			//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
-		} else {
-			//s.d.SelfServiceErrorManager().Forward(r.Context(), w, r, s.handleError(w, r, nil, pid, nil, err))
-		}
+		s.forwardError(w, r, nil, err)
 		return
 	}
 
 	claims, err := provider.Claims(r.Context(), attributes)
 	if err != nil {
-		//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
-		//return
+		s.forwardError(w, r, nil, err)
+		return
 	}
-	switch a := req.(type) {
+
+	if ff, err := s.processLoginOrRegister(w, r, provider, claims); err != nil {
+		if ff != nil {
+			s.forwardError(w, r, *ff, err)
+			return
+		}
+		s.forwardError(w, r, *ff, err)
+	}
+
+}
+
+func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, f flow.Flow, err error) {
+	if f == nil {
+		panic(err)
+	}
+	switch ff := f.(type) {
 	case *login.Flow:
-		if ff, err := s.processLogin(w, r, a, provider, claims); err != nil {
-			if ff != nil {
-				// s.forwardError(w, r, ff, err)
-				return
-			}
-			//	s.forwardError(w, r, a, err)
-		}
-		return
+		s.d.LoginFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
 	case *registration.Flow:
-		if ff, err := s.processRegistration(w, r, a, provider, claims); err != nil {
-			if ff != nil {
-				//s.forwardError(w, r, ff, err)
-				return
-			}
-			//s.forwardError(w, r, a, err)
-		}
-		return
-	default:
-		//s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, errors.WithStack(x.PseudoPanic.
-		//	WithDetailf("cause", "Unexpected type in OpenID Connect flow: %T", a))))
-		return
+		s.d.RegistrationFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
 	}
 }
 
@@ -342,7 +332,6 @@ func (s *Strategy) validateFlow(ctx context.Context, r *http.Request, rid uuid.U
 }
 
 func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flow.Flow, *authCodeContainer, error) {
-
 	var cntnr authCodeContainer
 	if _, err := s.d.ContinuityManager().Continue(r.Context(), w, r, sessionName, continuity.WithPayload(&cntnr)); err != nil {
 		return nil, nil, err

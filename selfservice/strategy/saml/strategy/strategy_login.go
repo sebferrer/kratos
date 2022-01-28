@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/ory/kratos/identity"
@@ -12,7 +11,6 @@ import (
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
-	"github.com/ory/x/sqlcon"
 )
 
 var _ login.Strategy = new(Strategy)
@@ -21,31 +19,17 @@ func (s *Strategy) RegisterLoginRoutes(r *x.RouterPublic) {
 	s.setRoutes(r)
 }
 
-func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*registration.Flow, error) {
-	i, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeSAML, claims.Subject) //We retrieve the identity from the DB
-
-	if err != nil {
-		if errors.Is(err, sqlcon.ErrNoRows) { //We check that the user exists in the database, if not, we register him
-
-			aa, err := s.d.RegistrationHandler().NewRegistrationFlow(w, r, flow.TypeBrowser) //Creation of a register flow
-			if err != nil {
-				return nil, s.handleError(w, r, a, "saml", nil, err)
-			}
-
-			if _, err := s.processRegistration(w, r, aa, provider, claims); err != nil { //We register the user
-				return aa, err
-			}
-
-			return nil, nil
-		}
-	}
+func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, i *identity.Identity, claims *samlsp.Claims) (*registration.Flow, error) {
 
 	sess := session.NewInactiveSession() //creation of an inactive session
 	sess.CompletedLoginFor(s.ID())       //Add saml to the Authentication Method References
 
-	if err = s.d.LoginHookExecutor().PostLoginHook(w, r, a, i, sess); err != nil {
+	if err := s.d.LoginHookExecutor().PostLoginHook(w, r, a, i, sess); err != nil {
 		return nil, s.handleError(w, r, a, "saml", nil, err)
 	}
+
+	http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
+
 	return nil, nil
 }
 

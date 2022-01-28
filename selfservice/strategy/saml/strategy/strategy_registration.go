@@ -37,26 +37,6 @@ func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registrat
 }
 
 func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*login.Flow, error) {
-
-	if _, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeOIDC, claims.Subject); err == nil { //We check if the user is present in the DB
-
-		s.d.Logger().WithRequest(r).WithField("provider", "saml").
-			WithField("subject", claims.Subject).
-			Debug("Received successful SAML Assertion but user is already registered. Re-initializing login flow now.")
-
-		// This endpoint only handles browser flow at the moment.
-		ar, err := s.d.LoginHandler().NewLoginFlow(w, r, flow.TypeBrowser) //If the user is already register, we create a login flow to connect him
-		if err != nil {
-			return nil, s.handleError(w, r, a, "saml", nil, err)
-		}
-
-		if _, err := s.processLogin(w, r, ar, provider, claims); err != nil { //Process the login
-			return ar, err
-		}
-		return nil, nil
-
-	}
-
 	jn, err := s.f.Fetch(provider.Config().Mapper)
 	if err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
@@ -87,15 +67,38 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 		i.Traits = []byte(traits.Raw)
 	}
 
+	s.d.Logger().
+		WithRequest(r).
+		WithField("oidc_provider", provider.Config().ID).
+		WithSensitiveField("oidc_claims", claims).
+		WithSensitiveField("mapper_jsonnet_output", evaluated).
+		WithField("mapper_jsonnet_url", provider.Config().Mapper).
+		Debug("OpenID Connect Jsonnet mapper completed.")
+
+	s.d.Logger().
+		WithRequest(r).
+		WithField("oidc_provider", provider.Config().ID).
+		WithSensitiveField("identity_traits", i.Traits).
+		WithSensitiveField("mapper_jsonnet_output", evaluated).
+		WithField("mapper_jsonnet_url", provider.Config().Mapper).
+		Debug("Merged form values and OpenID Connect Jsonnet output.")
+
+	if err := s.d.IdentityValidator().Validate(r.Context(), i); err != nil {
+		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
+	}
+
 	creds, err := NewCredentialsForSAML(claims.Subject)
 	if err != nil {
 		return nil, s.handleError(w, r, a, "saml", i.Traits, err)
 	}
 
 	i.SetCredentials(s.ID(), *creds)
+
 	if err := s.d.RegistrationExecutor().PostRegistrationHook(w, r, identity.CredentialsTypeSAML, a, i); err != nil {
 		return nil, s.handleError(w, r, a, "saml", i.Traits, err)
 	}
+
+	http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
 
 	return nil, nil
 }
