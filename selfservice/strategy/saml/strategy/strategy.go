@@ -128,7 +128,7 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 
 		// Adds the "Continue" button
 		rf.UI.SetCSRF(s.d.GenerateCSRFToken(r))
-		//AddProvider(rf.UI, provider, text.NewInfoRegistrationContinue())
+		AddProvider(rf.UI, provider, text.NewInfoRegistrationContinue())
 
 		if traits != nil {
 			traitNodes, err := container.NodesFromJSONSchema(node.OpenIDConnectGroup,
@@ -231,14 +231,14 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 }
 
 func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, f flow.Flow, err error) {
-	if f == nil {
-		panic(err)
-	}
 	switch ff := f.(type) {
 	case *login.Flow:
 		s.d.LoginFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
 	case *registration.Flow:
 		s.d.RegistrationFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
+	default:
+		s.d.LoginFlowErrorHandler().WriteFlowError(w, r, nil, s.NodeGroup(), err)
+
 	}
 }
 

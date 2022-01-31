@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 
 	"github.com/ory/kratos/identity"
+	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/ui/container"
+	"github.com/ory/kratos/ui/node"
 	"github.com/ory/kratos/x"
 
-	//saml "github.com/ory/kratos/selfservice/strategy/saml/strategy"
 	"github.com/pkg/errors"
 )
 
@@ -29,10 +30,16 @@ func NewCredentialsForSAML(subject string) (*identity.Credentials, error) {
 	}
 
 	return &identity.Credentials{
-		Type:        identity.CredentialsTypeOIDC,
+		Type:        identity.CredentialsTypeSAML,
 		Identifiers: []string{uid("saml", subject)},
 		Config:      b.Bytes(),
 	}, nil
+}
+
+func AddProvider(c *container.Container, providerID string, message *text.Message) {
+	c.GetNodes().Append(
+		node.NewInputField("provider", providerID, node.OpenIDConnectGroup, node.InputAttributeTypeSubmit).WithMetaLabel(message),
+	)
 }
 
 type ProviderCredentialsConfig struct {

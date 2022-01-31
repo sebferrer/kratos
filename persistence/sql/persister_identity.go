@@ -105,8 +105,10 @@ WHERE ici.identifier = ?
 func (p *Persister) findIdentityCredentialsType(ctx context.Context, ct identity.CredentialsType) (*identity.CredentialsTypeTable, error) {
 	var m identity.CredentialsTypeTable
 	if err := p.GetConnection(ctx).Where("name = ?", ct).First(&m); err != nil {
+
 		return nil, sqlcon.HandleError(err)
 	}
+
 	return &m, nil
 }
 
