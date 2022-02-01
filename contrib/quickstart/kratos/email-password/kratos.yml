@@ -61,7 +61,7 @@ selfservice:
       lifespan: 10m
       ui_url: http://51.210.126.182:4455/registration
       after:
-        password:
+        saml:
           hooks:
             -
               hook: session

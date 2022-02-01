@@ -98,7 +98,5 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 		return nil, s.handleError(w, r, a, "saml", i.Traits, err)
 	}
 
-	http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
-
 	return nil, nil
 }

@@ -29,7 +29,7 @@ import (
 const (
 	RouteSamlMetadata  = "/self-service/methods/saml/metadata"
 	RouteSamlLoginInit = "/self-service/methods/saml/browser"
-	RouteSamlAcs       = "/self-service/methods/saml/acs"
+	RouteSamlAcs       = "self-service/methods/saml/acs"
 )
 
 var ErrNoSession = errors.New("saml: session not present")
@@ -89,6 +89,7 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 	h.d.CSRFHandler().IgnorePath(RouteSamlLoginInit)
 	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
+	h.d.CSRFHandler().IgnorePath("/self-service/methods/saml/acs")
 
 	router.GET(RouteSamlMetadata, h.submitMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
@@ -104,7 +105,7 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 
 }
 
-// swagger:route GET /self-service/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
+// swagger:route GET /self-service/methods/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {

@@ -28,7 +28,7 @@ func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login
 		return nil, s.handleError(w, r, a, "saml", nil, err)
 	}
 
-	http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
+	//http.Redirect(w, r, "https://google.com", http.StatusTemporaryRedirect)
 
 	return nil, nil
 }
