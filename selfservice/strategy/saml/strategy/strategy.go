@@ -11,11 +11,12 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
+	"github.com/pkg/errors"
+
 	"github.com/ory/herodot"
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/ui/container"
 	"github.com/ory/kratos/ui/node"
-	"github.com/pkg/errors"
 
 	"github.com/go-playground/validator/v10"
 
@@ -108,10 +109,6 @@ func NewStrategy(d registrationStrategyDependencies) *Strategy {
 	}
 }
 
-func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
-	return
-}
-
 func (s *Strategy) ID() identity.CredentialsType {
 	return identity.CredentialsTypeSAML
 }
@@ -151,6 +148,10 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 
 func uid(provider, subject string) string {
 	return fmt.Sprintf("%s:%s", provider, subject)
+}
+
+func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
+	return 1, nil
 }
 
 func (s *Strategy) setRoutes(r *x.RouterPublic) {

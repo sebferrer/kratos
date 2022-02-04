@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/crewjam/saml/samlsp"
+
 	"github.com/ory/kratos/x"
 )
 

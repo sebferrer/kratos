@@ -27,7 +27,7 @@ Method | HTTP request | Description
 [**InitializeSelfServiceRecoveryFlowWithoutBrowser**](V0alpha2Api.md#InitializeSelfServiceRecoveryFlowWithoutBrowser) | **Get** /self-service/recovery/api | Initialize Recovery Flow for APIs, Services, Apps, ...
 [**InitializeSelfServiceRegistrationFlowForBrowsers**](V0alpha2Api.md#InitializeSelfServiceRegistrationFlowForBrowsers) | **Get** /self-service/registration/browser | Initialize Registration Flow for Browsers
 [**InitializeSelfServiceRegistrationFlowWithoutBrowser**](V0alpha2Api.md#InitializeSelfServiceRegistrationFlowWithoutBrowser) | **Get** /self-service/registration/api | Initialize Registration Flow for APIs, Services, Apps, ...
-[**InitializeSelfServiceSamlFlowForBrowsers**](V0alpha2Api.md#InitializeSelfServiceSamlFlowForBrowsers) | **Get** /self-service/saml/browser | Initialize Login Flow for Browsers
+[**InitializeSelfServiceSamlFlowForBrowsers**](V0alpha2Api.md#InitializeSelfServiceSamlFlowForBrowsers) | **Get** /self-service/methods/saml/browser | Initialize Registration Flow for APIs, Services, Apps, ...
 [**InitializeSelfServiceSettingsFlowForBrowsers**](V0alpha2Api.md#InitializeSelfServiceSettingsFlowForBrowsers) | **Get** /self-service/settings/browser | Initialize Settings Flow for Browsers
 [**InitializeSelfServiceSettingsFlowWithoutBrowser**](V0alpha2Api.md#InitializeSelfServiceSettingsFlowWithoutBrowser) | **Get** /self-service/settings/api | Initialize Settings Flow for APIs, Services, Apps, ...
 [**InitializeSelfServiceVerificationFlowForBrowsers**](V0alpha2Api.md#InitializeSelfServiceVerificationFlowForBrowsers) | **Get** /self-service/verification/browser | Initialize Verification Flow for Browser Clients
@@ -1604,9 +1604,9 @@ No authorization required
 
 ## InitializeSelfServiceSamlFlowForBrowsers
 
-> SelfServiceLoginFlow InitializeSelfServiceSamlFlowForBrowsers(ctx).Execute()
+> SelfServiceRegistrationFlow InitializeSelfServiceSamlFlowForBrowsers(ctx).Execute()
 
-Initialize Login Flow for Browsers
+Initialize Registration Flow for APIs, Services, Apps, ...
 
 
 
@@ -1631,7 +1631,7 @@ func main() {
         fmt.Fprintf(os.Stderr, "Error when calling `V0alpha2Api.InitializeSelfServiceSamlFlowForBrowsers``: %v\n", err)
         fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
     }
-    // response from `InitializeSelfServiceSamlFlowForBrowsers`: SelfServiceLoginFlow
+    // response from `InitializeSelfServiceSamlFlowForBrowsers`: SelfServiceRegistrationFlow
     fmt.Fprintf(os.Stdout, "Response from `V0alpha2Api.InitializeSelfServiceSamlFlowForBrowsers`: %v\n", resp)
 }
 ```
@@ -1647,7 +1647,7 @@ Other parameters are passed through a pointer to a apiInitializeSelfServiceSamlF
 
 ### Return type
 
-[**SelfServiceLoginFlow**](SelfServiceLoginFlow.md)
+[**SelfServiceRegistrationFlow**](SelfServiceRegistrationFlow.md)
 
 ### Authorization
 

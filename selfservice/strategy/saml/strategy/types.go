@@ -17,12 +17,13 @@ type CredentialsConfig struct {
 	Providers []ProviderCredentialsConfig `json:"providers"`
 }
 
-func NewCredentialsForSAML(subject string) (*identity.Credentials, error) {
+func NewCredentialsForSAML(subject string, provider string) (*identity.Credentials, error) {
 	var b bytes.Buffer
 	if err := json.NewEncoder(&b).Encode(CredentialsConfig{
 		Providers: []ProviderCredentialsConfig{
 			{
-				Subject: subject,
+				Subject:  subject,
+				Provider: provider,
 			}},
 	}); err != nil {
 		return nil, errors.WithStack(x.PseudoPanic.
@@ -31,19 +32,20 @@ func NewCredentialsForSAML(subject string) (*identity.Credentials, error) {
 
 	return &identity.Credentials{
 		Type:        identity.CredentialsTypeSAML,
-		Identifiers: []string{uid("saml", subject)},
+		Identifiers: []string{uid(provider, subject)},
 		Config:      b.Bytes(),
 	}, nil
 }
 
 func AddProvider(c *container.Container, providerID string, message *text.Message) {
 	c.GetNodes().Append(
-		node.NewInputField("provider", providerID, node.OpenIDConnectGroup, node.InputAttributeTypeSubmit).WithMetaLabel(message),
+		node.NewInputField("provider", providerID, node.SAMLGroup, node.InputAttributeTypeSubmit).WithMetaLabel(message),
 	)
 }
 
 type ProviderCredentialsConfig struct {
-	Subject string `json:"subject"`
+	Subject  string `json:"subject"`
+	Provider string `json:"provider"`
 }
 
 type FlowMethod struct {

@@ -30,7 +30,7 @@ func (d *ProviderSAML) Claims(ctx context.Context, SAMLAttribute samlsp.Attribut
 
 	claims := &Claims{
 		Issuer:            "saml",
-		Subject:           SAMLAttribute.Get("role"),
+		Subject:           SAMLAttribute.Get("mail"),
 		Name:              fmt.Sprintf("%s#%s", SAMLAttribute.Get("username"), SAMLAttribute.Get("discriminator")),
 		Nickname:          SAMLAttribute.Get("uid"),
 		PreferredUsername: SAMLAttribute.Get("username"),

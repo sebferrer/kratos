@@ -106,6 +106,35 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 }
 
 // swagger:route GET /self-service/methods/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
+//
+// Initialize Registration Flow for APIs, Services, Apps, ...
+//
+// This endpoint initiates a registration flow for API clients such as mobile devices, smart TVs, and so on.
+//
+// If a valid provided session cookie or session token is provided, a 400 Bad Request error
+// will be returned unless the URL query parameter `?refresh=true` is set.
+//
+// To fetch an existing registration flow call `/self-service/registration/flows?flow=<flow_id>`.
+//
+// You MUST NOT use this endpoint in client-side (Single Page Apps, ReactJS, AngularJS) nor server-side (Java Server
+// Pages, NodeJS, PHP, Golang, ...) browser applications. Using this endpoint in these applications will make
+// you vulnerable to a variety of CSRF attacks.
+//
+// In the case of an error, the `error.id` of the JSON response body can be one of:
+//
+// - `session_already_available`: The user is already signed in.
+// - `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
+//
+// This endpoint MUST ONLY be used in scenarios such as native mobile apps (React Native, Objective C, Swift, Java, ...).
+//
+// More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+//
+//     Schemes: http, https
+//
+//     Responses:
+//       200: selfServiceRegistrationFlow
+//       400: jsonError
+//       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {

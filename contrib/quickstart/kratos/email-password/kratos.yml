@@ -23,8 +23,8 @@ selfservice:
       enabled: true
       config:
         providers:
-          - id: test
-            label: test
+          - id: samlProviderID
+            label: samlProviderLabel
             public_cert_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert #A PARSE
             private_key_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key
             idp_metadata_url: https://samltest.id/saml/idp

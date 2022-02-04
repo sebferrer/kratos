@@ -593,24 +593,24 @@ type V0alpha2Api interface {
 	InitializeSelfServiceRegistrationFlowWithoutBrowserExecute(r V0alpha2ApiApiInitializeSelfServiceRegistrationFlowWithoutBrowserRequest) (*SelfServiceRegistrationFlow, *http.Response, error)
 
 	/*
-			 * InitializeSelfServiceSamlFlowForBrowsers Initialize Login Flow for Browsers
-			 * This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
-		cookies and anti-CSRF measures required for browser-based flows.
+			 * InitializeSelfServiceSamlFlowForBrowsers Initialize Registration Flow for APIs, Services, Apps, ...
+			 * This endpoint initiates a registration flow for API clients such as mobile devices, smart TVs, and so on.
 
-		If this endpoint is opened as a link in the browser, it will be redirected to
-		`selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
-		exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
-		`?refresh=true` was set.
+		If a valid provided session cookie or session token is provided, a 400 Bad Request error
+		will be returned unless the URL query parameter `?refresh=true` is set.
 
-		If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
-		case of an error, the `error.id` of the JSON response body can be one of:
+		To fetch an existing registration flow call `/self-service/registration/flows?flow=<flow_id>`.
+
+		You MUST NOT use this endpoint in client-side (Single Page Apps, ReactJS, AngularJS) nor server-side (Java Server
+		Pages, NodeJS, PHP, Golang, ...) browser applications. Using this endpoint in these applications will make
+		you vulnerable to a variety of CSRF attacks.
+
+		In the case of an error, the `error.id` of the JSON response body can be one of:
 
 		`session_already_available`: The user is already signed in.
-		`session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
 		`security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
-		`security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
 
-		This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+		This endpoint MUST ONLY be used in scenarios such as native mobile apps (React Native, Objective C, Swift, Java, ...).
 
 		More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
 			 * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -620,9 +620,9 @@ type V0alpha2Api interface {
 
 	/*
 	 * InitializeSelfServiceSamlFlowForBrowsersExecute executes the request
-	 * @return SelfServiceLoginFlow
+	 * @return SelfServiceRegistrationFlow
 	 */
-	InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceLoginFlow, *http.Response, error)
+	InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceRegistrationFlow, *http.Response, error)
 
 	/*
 			 * InitializeSelfServiceSettingsFlowForBrowsers Initialize Settings Flow for Browsers
@@ -4628,29 +4628,29 @@ type V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest struct {
 	ApiService V0alpha2Api
 }
 
-func (r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) Execute() (*SelfServiceLoginFlow, *http.Response, error) {
+func (r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) Execute() (*SelfServiceRegistrationFlow, *http.Response, error) {
 	return r.ApiService.InitializeSelfServiceSamlFlowForBrowsersExecute(r)
 }
 
 /*
- * InitializeSelfServiceSamlFlowForBrowsers Initialize Login Flow for Browsers
- * This endpoint initializes a browser-based user login flow. This endpoint will set the appropriate
-cookies and anti-CSRF measures required for browser-based flows.
+ * InitializeSelfServiceSamlFlowForBrowsers Initialize Registration Flow for APIs, Services, Apps, ...
+ * This endpoint initiates a registration flow for API clients such as mobile devices, smart TVs, and so on.
 
-If this endpoint is opened as a link in the browser, it will be redirected to
-`selfservice.flows.login.ui_url` with the flow ID set as the query parameter `?flow=`. If a valid user session
-exists already, the browser will be redirected to `urls.default_redirect_url` unless the query parameter
-`?refresh=true` was set.
+If a valid provided session cookie or session token is provided, a 400 Bad Request error
+will be returned unless the URL query parameter `?refresh=true` is set.
 
-If this endpoint is called via an AJAX request, the response contains the flow without a redirect. In the
-case of an error, the `error.id` of the JSON response body can be one of:
+To fetch an existing registration flow call `/self-service/registration/flows?flow=<flow_id>`.
+
+You MUST NOT use this endpoint in client-side (Single Page Apps, ReactJS, AngularJS) nor server-side (Java Server
+Pages, NodeJS, PHP, Golang, ...) browser applications. Using this endpoint in these applications will make
+you vulnerable to a variety of CSRF attacks.
+
+In the case of an error, the `error.id` of the JSON response body can be one of:
 
 `session_already_available`: The user is already signed in.
-`session_aal1_required`: Multi-factor auth (e.g. 2fa) was requested but the user has no session yet.
 `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
-`security_identity_mismatch`: The requested `?return_to` address is not allowed to be used. Adjust this in the configuration!
 
-This endpoint is NOT INTENDED for clients that do not have a browser (Chrome, Firefox, ...) as cookies are needed.
+This endpoint MUST ONLY be used in scenarios such as native mobile apps (React Native, Objective C, Swift, Java, ...).
 
 More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -4665,16 +4665,16 @@ func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsers(ctx contex
 
 /*
  * Execute executes the request
- * @return SelfServiceLoginFlow
+ * @return SelfServiceRegistrationFlow
  */
-func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceLoginFlow, *http.Response, error) {
+func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsersExecute(r V0alpha2ApiApiInitializeSelfServiceSamlFlowForBrowsersRequest) (*SelfServiceRegistrationFlow, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		localVarFormFileName string
 		localVarFileName     string
 		localVarFileBytes    []byte
-		localVarReturnValue  *SelfServiceLoginFlow
+		localVarReturnValue  *SelfServiceRegistrationFlow
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "V0alpha2ApiService.InitializeSelfServiceSamlFlowForBrowsers")
@@ -4682,7 +4682,7 @@ func (a *V0alpha2ApiService) InitializeSelfServiceSamlFlowForBrowsersExecute(r V
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/self-service/saml/browser"
+	localVarPath := localBasePath + "/self-service/methods/saml/browser"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

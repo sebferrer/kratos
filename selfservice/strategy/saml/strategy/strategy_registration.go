@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-jsonnet"
+
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/identity"
 	"github.com/ory/kratos/selfservice/flow"
@@ -13,9 +14,10 @@ import (
 	"github.com/ory/kratos/selfservice/flow/registration"
 	samlsp "github.com/ory/kratos/selfservice/strategy/saml"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
-	"github.com/tidwall/gjson"
 )
 
 var _ registration.Strategy = new(Strategy)
@@ -44,7 +46,7 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 
 	var jsonClaims bytes.Buffer
 	if err := json.NewEncoder(&jsonClaims).Encode(claims); err != nil {
-		return nil, s.handleError(w, r, a, "saml", nil, err)
+		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
 	}
 
 	i := identity.NewIdentity(config.DefaultIdentityTraitsSchemaID) // identity creation
@@ -69,33 +71,33 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 
 	s.d.Logger().
 		WithRequest(r).
-		WithField("oidc_provider", provider.Config().ID).
-		WithSensitiveField("oidc_claims", claims).
+		WithField("saml_provider", provider.Config().ID).
+		WithSensitiveField("saml_claims", claims).
 		WithSensitiveField("mapper_jsonnet_output", evaluated).
 		WithField("mapper_jsonnet_url", provider.Config().Mapper).
-		Debug("OpenID Connect Jsonnet mapper completed.")
+		Debug("SAML Jsonnet mapper completed.")
 
 	s.d.Logger().
 		WithRequest(r).
-		WithField("oidc_provider", provider.Config().ID).
+		WithField("saml_provider", provider.Config().ID).
 		WithSensitiveField("identity_traits", i.Traits).
 		WithSensitiveField("mapper_jsonnet_output", evaluated).
 		WithField("mapper_jsonnet_url", provider.Config().Mapper).
-		Debug("Merged form values and OpenID Connect Jsonnet output.")
+		Debug("Merged form values and SAML Jsonnet output.")
 
 	if err := s.d.IdentityValidator().Validate(r.Context(), i); err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
-	creds, err := NewCredentialsForSAML(claims.Subject)
+	creds, err := NewCredentialsForSAML(claims.Subject, provider.Config().ID)
 	if err != nil {
-		return nil, s.handleError(w, r, a, "saml", i.Traits, err)
+		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
 	i.SetCredentials(s.ID(), *creds)
 
 	if err := s.d.RegistrationExecutor().PostRegistrationHook(w, r, identity.CredentialsTypeSAML, a, i); err != nil {
-		return nil, s.handleError(w, r, a, "saml", i.Traits, err)
+		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
 	return nil, nil

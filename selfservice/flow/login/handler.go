@@ -110,7 +110,6 @@ func (h *Handler) NewLoginFlow(w http.ResponseWriter, r *http.Request, ft flow.T
 	sess, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
 	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 		// No session exists yet
-
 		// We can not request an AAL > 1 because we must first verify the first factor.
 		if f.RequestedAAL > identity.AuthenticatorAssuranceLevel1 {
 			return nil, errors.WithStack(ErrSessionRequiredForHigherAAL)
@@ -130,6 +129,7 @@ func (h *Handler) NewLoginFlow(w http.ResponseWriter, r *http.Request, ft flow.T
 		// We are not refreshing - so are we requesting MFA?
 
 		// If level is 1 we are not requesting AAL -> we are logged in already.
+
 		if f.RequestedAAL == identity.AuthenticatorAssuranceLevel1 {
 			return nil, errors.WithStack(ErrAlreadyLoggedIn)
 		}
