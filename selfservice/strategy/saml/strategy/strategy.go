@@ -75,6 +75,8 @@ type registrationStrategyDependencies interface {
 	login.FlowPersistenceProvider
 	login.HandlerProvider
 
+	samlflow.ErrorHandlerProvider
+
 	settings.FlowPersistenceProvider
 	settings.HookExecutorProvider
 	settings.HooksProvider
@@ -196,7 +198,6 @@ func (s *Strategy) getAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 	}
 
 	return attributes, nil
-
 }
 
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -205,42 +206,33 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 
 	attributes, err := s.getAttributesFromAssertion(w, r, m)
 	if err != nil {
-		s.forwardError(w, r, nil, err)
+		s.forwardError(w, r, err)
 		return
 	}
 
 	provider, err := s.provider(r.Context(), r)
 	if err != nil {
-		s.forwardError(w, r, nil, err)
+		s.forwardError(w, r, err)
 		return
 	}
 
 	claims, err := provider.Claims(r.Context(), attributes)
 	if err != nil {
-		s.forwardError(w, r, nil, err)
+		s.forwardError(w, r, err)
 		return
 	}
 
 	if ff, err := s.processLoginOrRegister(w, r, provider, claims); err != nil {
 		if ff != nil {
-			s.forwardError(w, r, *ff, err)
+			s.forwardError(w, r, err)
 			return
 		}
-		s.forwardError(w, r, *ff, err)
+		s.forwardError(w, r, err)
 	}
-
 }
 
-func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, f flow.Flow, err error) {
-	switch ff := f.(type) {
-	case *login.Flow:
-		s.d.LoginFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
-	case *registration.Flow:
-		s.d.RegistrationFlowErrorHandler().WriteFlowError(w, r, ff, s.NodeGroup(), err)
-	default:
-		s.d.LoginFlowErrorHandler().WriteFlowError(w, r, nil, s.NodeGroup(), err)
-
-	}
+func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, err error) {
+	s.d.SAMLAuthFlowErrorHandler().WriteFlowError(w, r, s.NodeGroup(), err)
 }
 
 func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
@@ -265,8 +257,8 @@ func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.
 	}
 
 	return provider, nil
-
 }
+
 func (s *Strategy) NodeGroup() node.Group {
 	return node.SAMLGroup
 }

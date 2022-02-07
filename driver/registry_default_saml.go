@@ -1,13 +1,21 @@
 package driver
 
 import (
-	"github.com/ory/kratos/selfservice/flow/saml"
+	samlflow "github.com/ory/kratos/selfservice/flow/saml"
 )
 
-func (m *RegistryDefault) SamlHandler() *saml.Handler {
-	if m.selfserviceSamlHandler == nil {
-		m.selfserviceSamlHandler = saml.NewHandler(m)
+func (m *RegistryDefault) SAMLHandler() *samlflow.Handler {
+	if m.selfserviceSAMLHandler == nil {
+		m.selfserviceSAMLHandler = samlflow.NewHandler(m)
 	}
 
-	return m.selfserviceSamlHandler
+	return m.selfserviceSAMLHandler
+}
+
+func (m *RegistryDefault) SAMLAuthFlowErrorHandler() *samlflow.ErrorHandler {
+	if m.selfserviceSAMLAuthRequestErrorHandler == nil {
+		m.selfserviceSAMLAuthRequestErrorHandler = samlflow.NewFlowErrorHandler(m)
+	}
+
+	return m.selfserviceSAMLAuthRequestErrorHandler
 }
