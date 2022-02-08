@@ -11,6 +11,8 @@ func DetermineAAL(cts []CredentialsType) AuthenticatorAssuranceLevel {
 			fallthrough
 		case CredentialsTypeOIDC:
 			fallthrough
+		case CredentialsTypeSAML:
+			fallthrough
 		case "v0.6_legacy_session":
 			fallthrough
 		case CredentialsTypePassword:

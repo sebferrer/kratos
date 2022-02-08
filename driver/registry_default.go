@@ -120,8 +120,7 @@ type RegistryDefault struct {
 	selfserviceLoginHandler             *login.Handler
 	selfserviceLoginRequestErrorHandler *login.ErrorHandler
 
-	selfserviceSAMLHandler                 *saml.Handler
-	selfserviceSAMLAuthRequestErrorHandler *saml.ErrorHandler
+	selfserviceSAMLHandler *saml.Handler
 
 	selfserviceSettingsHandler      *settings.Handler
 	selfserviceSettingsErrorHandler *settings.ErrorHandler

@@ -12,7 +12,7 @@ import (
 
 func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request, provider samlsp.Provider, claims *samlsp.Claims) (*flow.Flow, error) {
 
-	i, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeSAML, uid(provider.Config().ID, claims.Subject))
+	i, c, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeSAML, uid(provider.Config().ID, claims.Subject))
 
 	if err != nil {
 		if errors.Is(err, sqlcon.ErrNoRows) { //We check that the user exists in the database, if not, we register him
@@ -34,7 +34,7 @@ func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
 		}
-		if _, err = s.processLogin(w, r, loginFlow, provider, i, claims); err != nil {
+		if _, err = s.processLogin(w, r, loginFlow, provider, c, i, claims); err != nil {
 			return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
 		}
 		return nil, nil

@@ -3,13 +3,11 @@ package strategy
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/crewjam/saml/samlsp"
-	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 
@@ -75,8 +73,6 @@ type registrationStrategyDependencies interface {
 	login.FlowPersistenceProvider
 	login.HandlerProvider
 
-	samlflow.ErrorHandlerProvider
-
 	settings.FlowPersistenceProvider
 	settings.HookExecutorProvider
 	settings.HooksProvider
@@ -94,12 +90,6 @@ type Strategy struct {
 	f  *fetcher.Fetcher
 	v  *validator.Validate
 	hd *decoderx.HTTP
-}
-
-type authCodeContainer struct {
-	FlowID string          `json:"flow_id"`
-	State  string          `json:"state"`
-	Traits json.RawMessage `json:"traits"`
 }
 
 func NewStrategy(d registrationStrategyDependencies) *Strategy {
@@ -202,9 +192,12 @@ func (s *Strategy) getAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	m := *samlflow.GetMiddleware()
+	m, err := samlflow.GetMiddleware()
+	if err != nil {
+		s.forwardError(w, r, err)
+	}
 
-	attributes, err := s.getAttributesFromAssertion(w, r, m)
+	attributes, err := s.getAttributesFromAssertion(w, r, *m)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
@@ -225,14 +218,13 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 	if ff, err := s.processLoginOrRegister(w, r, provider, claims); err != nil {
 		if ff != nil {
 			s.forwardError(w, r, err)
-			return
 		}
 		s.forwardError(w, r, err)
 	}
 }
 
 func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, err error) {
-	s.d.SAMLAuthFlowErrorHandler().WriteFlowError(w, r, s.NodeGroup(), err)
+	s.d.LoginFlowErrorHandler().WriteFlowError(w, r, nil, s.NodeGroup(), err)
 }
 
 func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
@@ -275,71 +267,6 @@ func (s *Strategy) Config(ctx context.Context) (*samlstrategy.ConfigurationColle
 	}
 
 	return &c, nil
-}
-
-func (s *Strategy) validateFlow(ctx context.Context, r *http.Request, rid uuid.UUID) (flow.Flow, error) {
-	if x.IsZeroUUID(rid) {
-		return nil, errors.WithStack(herodot.ErrBadRequest.WithReason("The session cookie contains invalid values and the flow could not be executed. Please try again."))
-	}
-
-	if ar, err := s.d.RegistrationFlowPersister().GetRegistrationFlow(ctx, rid); err == nil {
-		if ar.Type != flow.TypeBrowser {
-			return ar, samlstrategy.ErrAPIFlowNotSupported
-		}
-
-		if err := ar.Valid(); err != nil {
-			return ar, err
-		}
-		return ar, nil
-	}
-
-	if ar, err := s.d.LoginFlowPersister().GetLoginFlow(ctx, rid); err == nil {
-		if ar.Type != flow.TypeBrowser {
-			return ar, samlstrategy.ErrAPIFlowNotSupported
-		}
-
-		if err := ar.Valid(); err != nil {
-			return ar, err
-		}
-		return ar, nil
-	}
-
-	ar, err := s.d.SettingsFlowPersister().GetSettingsFlow(ctx, rid)
-	if err == nil {
-		if ar.Type != flow.TypeBrowser {
-			return ar, samlstrategy.ErrAPIFlowNotSupported
-		}
-
-		sess, err := s.d.SessionManager().FetchFromRequest(ctx, r)
-		if err != nil {
-			return ar, err
-		}
-
-		if err := ar.Valid(sess); err != nil {
-			return ar, err
-		}
-		return ar, nil
-	}
-
-	return ar, err // this must return the error
-}
-
-func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flow.Flow, *authCodeContainer, error) {
-	var cntnr authCodeContainer
-	if _, err := s.d.ContinuityManager().Continue(r.Context(), w, r, sessionName, continuity.WithPayload(&cntnr)); err != nil {
-		return nil, nil, err
-	}
-
-	req, err := s.validateFlow(r.Context(), r, x.ParseUUID(cntnr.FlowID))
-	if err != nil {
-		return nil, &cntnr, err
-	}
-
-	if r.URL.Query().Get("error") != "" {
-		return req, &cntnr, errors.WithStack(herodot.ErrBadRequest.WithReasonf(`Unable to complete OpenID Connect flow because the OpenID Provider returned error "%s": %s`, r.URL.Query().Get("error"), r.URL.Query().Get("error_description")))
-	}
-
-	return req, &cntnr, nil
 }
 
 func (s *Strategy) populateMethod(r *http.Request, c *container.Container, message func(provider string) *text.Message) error {

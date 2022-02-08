@@ -139,23 +139,22 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 	if samlMiddleware == nil {
 		if err := h.instantiateMiddleware(r); err != nil {
-			panic(err)
+			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
 		}
 	}
 
 	conf := h.d.Config(r.Context())
 
-	_, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
-	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
-		// No session exists yet
+	if _, err := h.d.SessionManager().FetchFromRequest(r.Context(), r); err != nil {
+		if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
+			// No session exists yet
 
-		samlMiddleware.HandleStartAuthFlow(w, r)
-		return
-
+			samlMiddleware.HandleStartAuthFlow(w, r)
+		} else {
+			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+		}
 	} else {
-
-		http.Redirect(w, r, conf.SelfPublicURL().Path, http.StatusTemporaryRedirect)
-
+		http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
 	}
 
 }
@@ -220,6 +219,9 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	return nil
 }
 
-func GetMiddleware() *samlsp.Middleware {
-	return samlMiddleware
+func GetMiddleware() (*samlsp.Middleware, error) {
+	if samlMiddleware == nil {
+		return nil, errors.Errorf("The MiddleWare for SAML is null (Probably due to a backward step)")
+	}
+	return samlMiddleware, nil
 }

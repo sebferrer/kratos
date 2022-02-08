@@ -19,6 +19,18 @@ selfservice:
     password:
       enabled: true
 
+    oidc:
+      enabled: true
+      config:
+        providers:
+          - id: github # this is `<provider-id>` in the Authorization callback URL. DO NOT CHANGE IT ONCE SET!
+            provider: github
+            client_id: e302134ed2e66c2bb245 # Replace this with the OAuth2 Client ID provided by GitHub
+            client_secret: 01f3e93e911e1bad8f1b3758f17946b0b05145c9 # Replace this with the OAuth2 Client Secret provided by GitHub
+            mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/oidc.github.jsonnet
+            scope:
+              - user:email
+
     saml:
       enabled: true
       config:
@@ -27,6 +39,8 @@ selfservice:
             label: samlProviderLabel
             public_cert_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert #A PARSE
             private_key_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key
+            #idp_metadata_url: https://adfstest.ovh/FederationMetadata/2007-06/FederationMetadata.xml
+            #idp_sso_url: https://win-hldvngpo927.adfstest.ovh/adfs/ls/
             idp_metadata_url: https://samltest.id/saml/idp
             idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
             mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet
@@ -61,6 +75,9 @@ selfservice:
       lifespan: 10m
       ui_url: http://51.210.126.182:4455/registration
       after:
+        oidc:
+          hooks:
+            - hook: session
         saml:
           hooks:
             -
@@ -91,3 +108,7 @@ identity:
 courier:
   smtp:
     connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
+
+session:
+  whoami:
+    required_aal: highest_available

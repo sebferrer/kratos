@@ -1,8 +1,11 @@
 package strategy
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 
+	"github.com/ory/herodot"
 	"github.com/ory/kratos/identity"
 	"github.com/ory/kratos/selfservice/flow"
 	"github.com/ory/kratos/selfservice/flow/login"
@@ -11,6 +14,7 @@ import (
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
+	"github.com/pkg/errors"
 )
 
 var _ login.Strategy = new(Strategy)
@@ -19,13 +23,18 @@ func (s *Strategy) RegisterLoginRoutes(r *x.RouterPublic) {
 	s.setRoutes(r)
 }
 
-func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, i *identity.Identity, claims *samlsp.Claims) (*registration.Flow, error) {
+func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, c *identity.Credentials, i *identity.Identity, claims *samlsp.Claims) (*registration.Flow, error) {
+
+	var o CredentialsConfig
+	if err := json.NewDecoder(bytes.NewBuffer(c.Config)).Decode(&o); err != nil {
+		return nil, s.handleError(w, r, a, provider.Config().ID, nil, errors.WithStack(herodot.ErrInternalServerError.WithReason("The password credentials could not be decoded properly").WithDebug(err.Error())))
+	}
 
 	sess := session.NewInactiveSession() //creation of an inactive session
 	sess.CompletedLoginFor(s.ID())       //Add saml to the Authentication Method References
 
 	if err := s.d.LoginHookExecutor().PostLoginHook(w, r, a, i, sess); err != nil {
-		return nil, s.handleError(w, r, a, "saml", nil, err)
+		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
 	}
 
 	return nil, nil
