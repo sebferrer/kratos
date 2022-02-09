@@ -44,6 +44,17 @@ selfservice:
             idp_metadata_url: https://samltest.id/saml/idp
             idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
             mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet
+            attributes_map:
+              id: mail
+              firstname: givenName
+              lastname: sn
+              nickname: default
+              gender: default
+              birthdate: default
+              picture: default
+              email: mail
+              phone_number: default 
+          
 
   flows:
     error:
@@ -108,7 +119,3 @@ identity:
 courier:
   smtp:
     connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
-
-session:
-  whoami:
-    required_aal: highest_available

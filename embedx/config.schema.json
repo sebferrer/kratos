@@ -362,6 +362,87 @@
             "https://foo.bar.com/path/to/oidc.jsonnet",
             "base64://bG9jYWwgc3ViamVjdCA9I..."
           ]
+        },
+        "attributes_map": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "title": "ID",
+              "description": "The name of the IDP attribute that will represent the user ID on Kratos",
+              "type": "string",
+              "examples": [
+                "file://path/to/oidc.jsonnet",
+                "https://foo.bar.com/path/to/oidc.jsonnet",
+                "base64://bG9jYWwgc3ViamVjdCA9I..."
+              ]
+            },
+            "firstname": {
+              "title": "Firstname",
+              "description": "The name of the IDP attribute that will represent the user's firstname on Kratos",
+              "type": "string",
+              "examples": [
+                "John"
+              ]
+            },
+            "lastname": {
+              "title": "Lastname",
+              "description": "The name of the IDP attribute that will represent the user's lastname on Kratos",
+              "type": "string",
+              "examples": [
+                "Doe"
+              ]
+            },
+            "nickname": {
+              "title": "Nickname",
+              "description": "The name of the IDP attribute that will represent the user's username on Kratos",
+              "type": "string",
+              "examples": [
+                "JohnDoe1337"
+              ]
+            },
+            "gender": {
+              "title": "Gender",
+              "description": "The name of the IDP attribute that will represent the user's gender on Kratos",
+              "type": "string",
+              "examples": [
+                "Male",
+                "Female",
+                "Non-binary"
+              ]
+            },
+            "birthdate": {
+              "title": "Birthdate",
+              "description": "The name of the IDP attribute that will represent the user's birthdate on Kratos",
+              "type": "string",
+              "examples": [
+                "08/23/1978"
+              ]
+            },
+            "picture": {
+              "title": "Picture",
+              "description": "The name of the IDP attribute that will represent the user's picture on Kratos",
+              "type": "string",
+              "examples": [
+                "https://imagepicture.jpg"
+              ]
+            },
+            "email": {
+              "title": "Email",
+              "description": "The name of the IDP attribute that will represent the user's email on Kratos",
+              "type": "string",
+              "examples": [
+                "john.doe@gmail.com"
+              ]
+            },
+            "phone_number": {
+              "title": "Phone Number",
+              "description": "The name of the IDP attribute that will represent the user's phone number on Kratos",
+              "type": "string",
+              "examples": [
+                "+33678984320"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false,

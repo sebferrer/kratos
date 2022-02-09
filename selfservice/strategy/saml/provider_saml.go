@@ -1,11 +1,14 @@
 package saml
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"net/url"
 
 	"github.com/crewjam/saml/samlsp"
+	"github.com/ory/kratos/driver/config"
+	"github.com/ory/x/jsonx"
+	"github.com/pkg/errors"
 )
 
 type ProviderSAML struct {
@@ -26,18 +29,29 @@ func NewProviderSAML(
 	}
 }
 
-func (d *ProviderSAML) Claims(ctx context.Context, SAMLAttribute samlsp.Attributes) (*Claims, error) {
+func (d *ProviderSAML) Claims(ctx context.Context, config *config.Config, SAMLAttribute samlsp.Attributes) (*Claims, error) {
+
+	var c ConfigurationCollection
+
+	conf := config.SelfServiceStrategy("saml").Config
+	if err := jsonx.
+		NewStrictDecoder(bytes.NewBuffer(conf)).
+		Decode(&c); err != nil {
+		return nil, errors.Wrapf(err, "Unable to decode config %v", string(conf))
+	}
 
 	claims := &Claims{
-		Issuer:            "saml",
-		Subject:           SAMLAttribute.Get("mail"),
-		Name:              fmt.Sprintf("%s#%s", SAMLAttribute.Get("username"), SAMLAttribute.Get("discriminator")),
-		Nickname:          SAMLAttribute.Get("uid"),
-		PreferredUsername: SAMLAttribute.Get("username"),
-		Picture:           SAMLAttribute.Get("avatar"),
-		Email:             SAMLAttribute.Get("mail"),
-		EmailVerified:     true,
-		Locale:            SAMLAttribute.Get("locale"),
+		Issuer:        "saml",
+		Subject:       SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["id"]),
+		Name:          SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["firstname"]),
+		LastName:      SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["lastname"]),
+		Nickname:      SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["nickname"]),
+		Gender:        SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["gender"]),
+		Birthdate:     SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["birthdate"]),
+		Picture:       SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["picture"]),
+		Email:         SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["email"]),
+		PhoneNumber:   SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["phone_number"]),
+		EmailVerified: true,
 	}
 
 	return claims, nil

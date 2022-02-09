@@ -5,11 +5,12 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 
+	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/x"
 )
 
 type Provider interface {
-	Claims(ctx context.Context, SAMLAttribute samlsp.Attributes) (*Claims, error)
+	Claims(ctx context.Context, config *config.Config, SAMLAttribute samlsp.Attributes) (*Claims, error)
 	Config() *Configuration
 }
 

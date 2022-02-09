@@ -209,7 +209,7 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	claims, err := provider.Claims(r.Context(), attributes)
+	claims, err := provider.Claims(r.Context(), s.d.Config(r.Context()), attributes)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return

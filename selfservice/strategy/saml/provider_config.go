@@ -11,21 +11,20 @@ type Configuration struct {
 	// Label represents an optional label which can be used in the UI generation.
 	Label string `json:"label"`
 
-	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
-	// If set, neither `auth_url` nor `token_url` are required.
+	// Represent the path of the certificate of your application
 	PublicCertPath string `json:"public_cert_path"`
 
-	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
-	// If set, neither `auth_url` nor `token_url` are required.
+	// Represent the path of the private key of your application
 	PrivateKeyPath string `json:"private_key_path"`
 
-	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
-	// If set, neither `auth_url` nor `token_url` are required.
+	// Represent the URL of the metadata of your Identity Provider (optionnal)
 	IDPMetadataURL string `json:"idp_metadata_url"`
 
 	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
 	// If set, neither `auth_url` nor `token_url` are required.
 	IDPSSOURL string `json:"idp_sso_url"`
+
+	AttributesMap map[string]string `json:"attributes_map"`
 
 	// Mapper specifies the JSONNet code snippet which uses the OpenID Connect Provider's data (e.g. GitHub or Google
 	// profile information) to hydrate the identity's data.
