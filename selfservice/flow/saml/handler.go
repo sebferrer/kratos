@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -171,7 +172,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
-	keyPair, err := tls.LoadX509KeyPair(c.SAMLProviders[0].PublicCertPath, c.SAMLProviders[0].PrivateKeyPath)
+	keyPair, err := tls.LoadX509KeyPair(strings.Replace(c.SAMLProviders[0].PublicCertPath, "file://", "", 1), strings.Replace(c.SAMLProviders[0].PrivateKeyPath, "file://", "", 1))
 	if err != nil {
 		return err
 	}

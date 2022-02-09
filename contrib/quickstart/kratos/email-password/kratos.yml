@@ -37,22 +37,22 @@ selfservice:
         providers:
           - id: samlProviderID
             label: samlProviderLabel
-            public_cert_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert #A PARSE
-            private_key_path: /home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key
-            #idp_metadata_url: https://adfstest.ovh/FederationMetadata/2007-06/FederationMetadata.xml
-            #idp_sso_url: https://win-hldvngpo927.adfstest.ovh/adfs/ls/
-            idp_metadata_url: https://samltest.id/saml/idp
-            idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
+            public_cert_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert #A PARSE
+            private_key_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key
+            idp_metadata_url: https://adfstest.ovh/FederationMetadata/2007-06/FederationMetadata.xml
+            idp_sso_url: https://adfs.adfstest.ovh/adfs/ls/
+            #idp_metadata_url: https://samltest.id/saml/idp
+            #idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
             mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet
             attributes_map:
-              id: mail
-              firstname: givenName
-              lastname: sn
+              id: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn
+              firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
+              lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
               nickname: default
               gender: default
               birthdate: default
               picture: default
-              email: mail
+              email: default
               phone_number: default 
           
 

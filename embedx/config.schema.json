@@ -316,6 +316,7 @@
           "title": "Public Certificate Path",
           "description": "/",
           "type": "string",
+          "format": "uri",
           "examples": [
             "file://path/to/oidc.jsonnet",
             "https://foo.bar.com/path/to/oidc.jsonnet"
@@ -325,6 +326,7 @@
           "title": "Private Certificate Path",
           "description": "/",
           "type": "string",
+          "format": "uri",
           "examples": [
             "file://path/to/oidc.jsonnet",
             "https://foo.bar.com/path/to/oidc.jsonnet"
