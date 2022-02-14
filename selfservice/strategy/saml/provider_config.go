@@ -38,6 +38,6 @@ type ConfigurationCollection struct {
 }
 
 func (c ConfigurationCollection) Provider(idpMetadataUrl *url.URL, idpSsoUrl *url.URL) (Provider, error) {
-	return NewProviderSAML(idpMetadataUrl, idpSsoUrl, &c.SAMLProviders[0]), nil
+	return NewProviderSAML(idpMetadataUrl, idpSsoUrl, &c.SAMLProviders[len(c.SAMLProviders)-1]), nil
 
 }

@@ -1,7 +1,6 @@
 package login
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -109,12 +108,6 @@ func (h *Handler) NewLoginFlow(w http.ResponseWriter, r *http.Request, ft flow.T
 
 	// We assume an error means the user has no session
 	sess, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
-	fmt.Println("##########################################################")
-	fmt.Println("##########################################################")
-	fmt.Println("##########################################################")
-	fmt.Println("##########################################################")
-	fmt.Println("##########################################################")
-	fmt.Println("##########################################################")
 	if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 		// No session exists yet
 		// We can not request an AAL > 1 because we must first verify the first factor.

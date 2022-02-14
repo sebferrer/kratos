@@ -1,4 +1,4 @@
-package strategy_test
+package saml_test
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/identity"
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
-	"github.com/ory/kratos/x"
 )
 
 func newReturnTs(t *testing.T, reg driver.Registry) *httptest.Server {
@@ -31,30 +30,11 @@ func newReturnTs(t *testing.T, reg driver.Registry) *httptest.Server {
 	return ts
 }
 
-func newUI(t *testing.T, reg driver.Registry) *httptest.Server {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var e interface{}
-		var err error
-		if r.URL.Path == "/login" {
-			e, err = reg.LoginFlowPersister().GetLoginFlow(r.Context(), x.ParseUUID(r.URL.Query().Get("flow")))
-		} else if r.URL.Path == "/registration" {
-			e, err = reg.RegistrationFlowPersister().GetRegistrationFlow(r.Context(), x.ParseUUID(r.URL.Query().Get("flow")))
-		}
-		require.NoError(t, err)
-		reg.Writer().Write(w, r, e)
-	}))
-	t.Cleanup(ts.Close)
-	reg.Config(context.Background()).MustSet(config.ViperKeySelfServiceLoginUI, ts.URL+"/login")
-	reg.Config(context.Background()).MustSet(config.ViperKeySelfServiceRegistrationUI, ts.URL+"/registration")
-	return ts
-}
-
 func newSAMLProvider(
 	t *testing.T,
 	kratos *httptest.Server,
 	id, label string,
 ) samlstrategy.Configuration {
-
 	return samlstrategy.Configuration{
 		ID:             id,
 		Label:          label,

@@ -42,15 +42,15 @@ func (d *ProviderSAML) Claims(ctx context.Context, config *config.Config, SAMLAt
 
 	claims := &Claims{
 		Issuer:        "saml",
-		Subject:       SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["id"]),
-		Name:          SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["firstname"]),
-		LastName:      SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["lastname"]),
-		Nickname:      SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["nickname"]),
-		Gender:        SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["gender"]),
-		Birthdate:     SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["birthdate"]),
-		Picture:       SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["picture"]),
-		Email:         SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["email"]),
-		PhoneNumber:   SAMLAttribute.Get(c.SAMLProviders[0].AttributesMap["phone_number"]),
+		Subject:       SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["id"]),
+		Name:          SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["firstname"]),
+		LastName:      SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["lastname"]),
+		Nickname:      SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["nickname"]),
+		Gender:        SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["gender"]),
+		Birthdate:     SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["birthdate"]),
+		Picture:       SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["picture"]),
+		Email:         SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["email"]),
+		PhoneNumber:   SAMLAttribute.Get(c.SAMLProviders[len(c.SAMLProviders)-1].AttributesMap["phone_number"]),
 		EmailVerified: true,
 	}
 

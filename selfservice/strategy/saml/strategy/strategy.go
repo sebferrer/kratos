@@ -3,13 +3,16 @@ package strategy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 
 	"github.com/ory/herodot"
 	"github.com/ory/kratos/text"
@@ -143,7 +146,27 @@ func uid(provider, subject string) string {
 }
 
 func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
-	return 1, nil
+	for _, c := range cc {
+		if c.Type == s.ID() && gjson.ValidBytes(c.Config) {
+			var conf CredentialsConfig
+			if err = json.Unmarshal(c.Config, &conf); err != nil {
+				return 0, errors.WithStack(err)
+			}
+
+			for _, ider := range c.Identifiers {
+				parts := strings.Split(ider, ":")
+				if len(parts) != 2 {
+					continue
+				}
+
+				if parts[0] == conf.Providers[0].Provider && parts[1] == conf.Providers[0].Subject && len(conf.Providers[0].Subject) > 1 && len(conf.Providers[0].Provider) > 1 {
+					count++
+				}
+
+			}
+		}
+	}
+	return
 }
 
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
@@ -233,12 +256,12 @@ func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.
 		return nil, err
 	}
 
-	IDPMetadataURL, err := url.Parse(c.SAMLProviders[0].IDPMetadataURL)
+	IDPMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPMetadataURL)
 	if err != nil {
 		return nil, err
 	}
 
-	IDPSSOURL, err := url.Parse(c.SAMLProviders[0].IDPSSOURL)
+	IDPSSOURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPSSOURL)
 	if err != nil {
 		return nil, err
 	}

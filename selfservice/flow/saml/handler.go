@@ -30,7 +30,7 @@ import (
 const (
 	RouteSamlMetadata  = "/self-service/methods/saml/metadata"
 	RouteSamlLoginInit = "/self-service/methods/saml/browser"
-	RouteSamlAcs       = "self-service/methods/saml/acs"
+	RouteSamlAcs       = "/self-service/methods/saml/acs"
 )
 
 var ErrNoSession = errors.New("saml: session not present")
@@ -90,7 +90,6 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 
 	h.d.CSRFHandler().IgnorePath(RouteSamlLoginInit)
 	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
-	h.d.CSRFHandler().IgnorePath("/self-service/methods/saml/acs")
 
 	router.GET(RouteSamlMetadata, h.submitMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
@@ -103,7 +102,6 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 	}
 
 	samlMiddleware.ServeMetadata(w, r)
-
 }
 
 // swagger:route GET /self-service/methods/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
@@ -157,7 +155,6 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	} else {
 		http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
 	}
-
 }
 
 func (h *Handler) instantiateMiddleware(r *http.Request) error {
@@ -172,7 +169,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
-	keyPair, err := tls.LoadX509KeyPair(strings.Replace(c.SAMLProviders[0].PublicCertPath, "file://", "", 1), strings.Replace(c.SAMLProviders[0].PrivateKeyPath, "file://", "", 1))
+	keyPair, err := tls.LoadX509KeyPair(strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PublicCertPath, "file://", "", 1), strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PrivateKeyPath, "file://", "", 1))
 	if err != nil {
 		return err
 	}
@@ -181,7 +178,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return err
 	}
 
-	idpMetadataURL, err := url.Parse(c.SAMLProviders[0].IDPMetadataURL)
+	idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPMetadataURL)
 	if err != nil {
 		return err
 	}
@@ -209,11 +206,30 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	}
 
 	var publicUrlString = config.SelfPublicURL().String()
-	u, err := url.Parse(publicUrlString + RouteSamlAcs)
-	if err != nil {
-		return err
+
+	RouteSamlAcsWithSlash := RouteSamlAcs
+
+	if RouteSamlAcs[0] != '/' && publicUrlString[len(publicUrlString)-1] != '/' {
+		u, err := url.Parse(publicUrlString + "/" + RouteSamlAcsWithSlash)
+		if err != nil {
+			return err
+		}
+		samlMiddleWare.ServiceProvider.AcsURL = *u
+	} else if RouteSamlAcs[0] == '/' && publicUrlString[len(publicUrlString)-1] == '/' {
+
+		publicUrlStringWithoutSlash := strings.ReplaceAll(publicUrlString, "/", "")
+		u, err := url.Parse(publicUrlStringWithoutSlash + RouteSamlAcsWithSlash)
+		if err != nil {
+			return err
+		}
+		samlMiddleWare.ServiceProvider.AcsURL = *u
+	} else {
+		u, err := url.Parse(publicUrlString + RouteSamlAcsWithSlash)
+		if err != nil {
+			return err
+		}
+		samlMiddleWare.ServiceProvider.AcsURL = *u
 	}
-	samlMiddleWare.ServiceProvider.AcsURL = *u
 
 	samlMiddleware = samlMiddleWare
 

@@ -4,16 +4,27 @@ dsn: postgres://kratos:secret@localhost:5432/kratos?sslmode=disable&max_conns=20
 
 serve:
   public:
-    base_url: http://51.210.126.182:4433/
+    tls:
+      cert:
+        path: /etc/letsencrypt/live/samlkratos.ovh/cert.pem
+      key:
+        path: /etc/letsencrypt/live/samlkratos.ovh/privkey.pem
+
+    base_url: https://samlkratos.ovh:4433/
     cors:
       enabled: true
   admin:
     base_url: http://kratos:4434/
+    tls:
+      cert:
+        path: /etc/letsencrypt/live/samlkratos.ovh/cert.pem
+      key:
+        path: /etc/letsencrypt/live/samlkratos.ovh/privkey.pem
 
 selfservice:
-  default_browser_return_url: http://51.210.126.182:4455/
+  default_browser_return_url: https://samlkratos.ovh:4455/
   whitelisted_return_urls:
-    - http://51.210.126.182:4455
+    - https://samlkratos.ovh:4455
 
   methods:
     password:
@@ -37,54 +48,54 @@ selfservice:
         providers:
           - id: samlProviderID
             label: samlProviderLabel
-            public_cert_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert #A PARSE
+            public_cert_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert
             private_key_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key
-            idp_metadata_url: https://adfstest.ovh/FederationMetadata/2007-06/FederationMetadata.xml
-            idp_sso_url: https://adfs.adfstest.ovh/adfs/ls/
-            #idp_metadata_url: https://samltest.id/saml/idp
-            #idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
+            #idp_metadata_url: https://sso.federation.ovh/FederationMetadata/2007-06/FederationMetadata.xml
+            #idp_sso_url: https://sso.federation.ovh/adfs/ls/
+            idp_metadata_url: https://samltest.id/saml/idp
+            idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
             mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet
             attributes_map:
-              id: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn
-              firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
-              lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+              id: mail
+              firstname: givenName
+              lastname: sn
               nickname: default
               gender: default
               birthdate: default
               picture: default
-              email: default
+              email: mail
               phone_number: default 
           
 
   flows:
     error:
-      ui_url: http://51.210.126.182:4455/error
+      ui_url: https://samlkratos.ovh:4455/error
 
     settings:
-      ui_url: http://51.210.126.182:4455/settings
+      ui_url: https://samlkratos.ovh:4455/settings
       privileged_session_max_age: 15m
 
     recovery:
       enabled: true
-      ui_url: http://51.210.126.182:4455/recovery
+      ui_url: https://samlkratos.ovh:4455/recovery
 
     verification:
       enabled: true
-      ui_url: http://51.210.126.182:4455/verification
+      ui_url: https://samlkratos.ovh:4455/verification
       after:
-        default_browser_return_url: http://51.210.126.182:4455/
+        default_browser_return_url: https://samlkratos.ovh:4455/
 
     logout:
       after:
-        default_browser_return_url: http://51.210.126.182:4455/login
+        default_browser_return_url: https://samlkratos.ovh:4455/login
 
     login:
-      ui_url: http://51.210.126.182:4455/login
+      ui_url: https://samlkratos.ovh:4455/login
       lifespan: 10m
 
     registration:
       lifespan: 10m
-      ui_url: http://51.210.126.182:4455/registration
+      ui_url: https://samlkratos.ovh:4455/registration
       after:
         oidc:
           hooks:
