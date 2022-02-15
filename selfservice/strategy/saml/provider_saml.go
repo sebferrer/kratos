@@ -3,7 +3,6 @@ package saml
 import (
 	"bytes"
 	"context"
-	"net/url"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/ory/kratos/driver/config"
@@ -12,20 +11,20 @@ import (
 )
 
 type ProviderSAML struct {
-	idpMetadataUrl *url.URL
-	idpSsoUrl      *url.URL
-	config         *Configuration
+	id     string
+	label  string
+	config *Configuration
 }
 
 func NewProviderSAML(
-	idpMetadataUrl *url.URL,
-	idpSsoUrl *url.URL,
+	id string,
+	label string,
 	config *Configuration,
 ) *ProviderSAML {
 	return &ProviderSAML{
-		idpMetadataUrl: idpMetadataUrl,
-		idpSsoUrl:      idpSsoUrl,
-		config:         config,
+		id:     id,
+		label:  label,
+		config: config,
 	}
 }
 

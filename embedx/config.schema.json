@@ -332,28 +332,6 @@
             "https://foo.bar.com/path/to/oidc.jsonnet"
           ]
         },
-        "idp_metadata_url": {
-          "title": "IdentityProvider Metadata URL",
-          "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
-          "type": "string",
-          "format": "uri",
-          "examples": [
-            "file://path/to/oidc.jsonnet",
-            "https://foo.bar.com/path/to/oidc.jsonnet",
-            "base64://bG9jYWwgc3ViamVjdCA9I..."
-          ]
-        },
-        "idp_sso_url": {
-          "title": "IdentityProvider SingleSignOn URL",
-          "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
-          "type": "string",
-          "format": "uri",
-          "examples": [
-            "file://path/to/oidc.jsonnet",
-            "https://foo.bar.com/path/to/oidc.jsonnet",
-            "base64://bG9jYWwgc3ViamVjdCA9I..."
-          ]
-        },
         "mapper_url": {
           "title": "Jsonnet Mapper URL",
           "description": "The URL where the jsonnet source is located for mapping the provider's data to Ory Kratos data.",
@@ -363,6 +341,87 @@
             "file://path/to/oidc.jsonnet",
             "https://foo.bar.com/path/to/oidc.jsonnet",
             "base64://bG9jYWwgc3ViamVjdCA9I..."
+          ]
+        },
+        "idp_information": {
+          "type": "object",
+          "properties": {
+            "idp_metadata_url": {
+              "title": "IDP Metadata URL",
+              "description": "The URL of the metadata of the IDP",
+              "type": "string",
+              "examples": [
+                "https://path/to/metadata"
+              ]
+            },
+            "idp_certificate_path": {
+              "title": "IDP Certificate Path",
+              "description": "The path to the certificate of the IDP",
+              "type": "string",
+              "examples": [
+                "file://path/to/certificate",
+                "https://foo.bar.com/path/to/certificate"
+              ]
+            },
+            "idp_logout_url": {
+              "title": "IDP Logout URL",
+              "description": "The URL of the SLO API of the IDP",
+              "type": "string",
+              "examples": [
+                "https://path/to/logout"
+              ]
+            },
+            "idp_sso_url": {
+              "title": "IDP SSO URL",
+              "description": "The URL of the SSO Handler at the IDP",
+              "type": "string",
+              "examples": [
+                "https://path/to/sso"
+              ]
+            },
+            "idp_entity_id": {
+              "title": "The EntityID of the IDP",
+              "description": "It is a unique identifier representing the IDP in saml requests",
+              "type": "string",
+              "examples": [
+                "https://samltest.id/saml/idp"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "idp_metadata_url": {
+                    "const": {}
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "idp_logout_url",
+                  "idp_certificate_path",
+                  "idp_sso_url",
+                  "idp_entity_id"
+                ]
+              },
+              "else":{
+                "required": [
+                  "idp_sso_url"
+                ],
+                "properties": {
+                  "idp_certificate_path": {
+                    "const": {}
+                  },
+                  "idp_logout_url": {
+                    "const": {}
+                  },
+                  "idp_entity_id":{
+                    "const":{}
+                  }
+                }
+              }
+            }
           ]
         },
         "attributes_map": {
@@ -453,8 +512,6 @@
         "label",
         "public_cert_path",
         "private_key_path",
-        "idp_metadata_url",
-        "idp_sso_url",
         "mapper_url"
       ]
     },

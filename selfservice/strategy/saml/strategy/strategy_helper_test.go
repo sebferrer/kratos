@@ -61,8 +61,8 @@ func newSAMLProvider(
 		PublicCertPath: "secret",
 		PrivateKeyPath: "/",
 		Mapper:         "file://./stub/oidc.hydra.jsonnet",
-		IDPMetadataURL: "",
-		IDPSSOURL:      "",
+		//IDPMetadataURL: "",
+		//IDPSSOURL:      "",
 	}
 }
 

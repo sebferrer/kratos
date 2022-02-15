@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/selfservice/errorx"
 
+	samlidp "github.com/crewjam/saml"
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
 
 	"github.com/ory/kratos/session"
@@ -178,15 +181,54 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return err
 	}
 
-	idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPMetadataURL)
-	if err != nil {
-		return err
-	}
+	var idpMetadata *samlidp.EntityDescriptor
 
-	idpMetadata, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient,
-		*idpMetadataURL)
-	if err != nil {
-		return err
+	if c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"] != "" {
+		//The metadata file is provided
+		idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"])
+		if err != nil {
+			return err
+		}
+
+		idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
+		if err != nil {
+			return err
+		}
+	} else {
+		//The metadata file is not provided
+		// So were are creating fake IDP metadata based on what is provided by the user on the config file
+		entityIDURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_entity_id"]) //A modifier
+		if err != nil {
+			return err
+		}
+
+		IDPSSOURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_sso_url"])
+		if err != nil {
+			return err
+		}
+
+		IDPlogoutURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_logout_url"])
+		if err != nil {
+			return err
+		}
+		certificate, err := ioutil.ReadFile(strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_certificate_path"], "file://", "", 1))
+		if err != nil {
+			return err
+		}
+
+		IDPCertificate := mustParseCertificate(certificate)
+
+		simulatedIDP := samlidp.IdentityProvider{
+			Key:         nil,
+			Certificate: IDPCertificate,
+			Logger:      nil,
+			MetadataURL: *entityIDURL,
+			SSOURL:      *IDPSSOURL,
+			LogoutURL:   *IDPlogoutURL,
+		}
+
+		idpMetadata = simulatedIDP.Metadata()
+
 	}
 
 	rootURL, err := url.Parse(config.SelfServiceBrowserDefaultReturnTo().String())
@@ -241,4 +283,16 @@ func GetMiddleware() (*samlsp.Middleware, error) {
 		return nil, errors.Errorf("The MiddleWare for SAML is null (Probably due to a backward step)")
 	}
 	return samlMiddleware, nil
+}
+
+func mustParseCertificate(pemStr []byte) *x509.Certificate {
+	b, _ := pem.Decode(pemStr)
+	if b == nil {
+		panic("cannot parse PEM")
+	}
+	cert, err := x509.ParseCertificate(b.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	return cert
 }

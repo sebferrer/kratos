@@ -1,9 +1,5 @@
 package saml
 
-import (
-	"net/url"
-)
-
 type Configuration struct {
 	// ID is the provider's ID
 	ID string `json:"id"`
@@ -17,14 +13,11 @@ type Configuration struct {
 	// Represent the path of the private key of your application
 	PrivateKeyPath string `json:"private_key_path"`
 
-	// Represent the URL of the metadata of your Identity Provider (optionnal)
-	IDPMetadataURL string `json:"idp_metadata_url"`
-
-	// IssuerURL is the OpenID Connect Server URL. You can leave this empty if `provider` is not set to `generic`.
-	// If set, neither `auth_url` nor `token_url` are required.
-	IDPSSOURL string `json:"idp_sso_url"`
-
+	// It is a map where you have to name the attributes contained in the SAML response to associate them with their value
 	AttributesMap map[string]string `json:"attributes_map"`
+
+	// Information about the IDP like the sso url, slo url, entiy ID, metadata url
+	IDPInformation map[string]string `json:"idp_information"`
 
 	// Mapper specifies the JSONNet code snippet which uses the OpenID Connect Provider's data (e.g. GitHub or Google
 	// profile information) to hydrate the identity's data.
@@ -37,7 +30,7 @@ type ConfigurationCollection struct {
 	SAMLProviders []Configuration `json:"providers"`
 }
 
-func (c ConfigurationCollection) Provider(idpMetadataUrl *url.URL, idpSsoUrl *url.URL) (Provider, error) {
-	return NewProviderSAML(idpMetadataUrl, idpSsoUrl, &c.SAMLProviders[len(c.SAMLProviders)-1]), nil
+func (c ConfigurationCollection) Provider(id string, label string) (Provider, error) {
+	return NewProviderSAML(id, label, &c.SAMLProviders[len(c.SAMLProviders)-1]), nil
 
 }

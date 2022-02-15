@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/crewjam/saml/samlsp"
@@ -256,17 +255,7 @@ func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.
 		return nil, err
 	}
 
-	IDPMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPMetadataURL)
-	if err != nil {
-		return nil, err
-	}
-
-	IDPSSOURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPSSOURL)
-	if err != nil {
-		return nil, err
-	}
-
-	provider, err := c.Provider(IDPMetadataURL, IDPSSOURL)
+	provider, err := c.Provider(c.SAMLProviders[len(c.SAMLProviders)-1].ID, c.SAMLProviders[len(c.SAMLProviders)-1].Label)
 	if err != nil {
 		return nil, err
 	}

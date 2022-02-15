@@ -97,10 +97,10 @@ func TestXmlMetadataExist(t *testing.T) {
 			Label:          "samlProviderTestLabel",
 			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
 			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
-			IDPMetadataURL: "https://samltest.id/saml/idp",
-			IDPSSOURL:      "https://samltest.id/idp/profile/SAML2/Redirect/SSO",
-			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
-			AttributesMap:  attributesMap,
+			//IDPMetadataURL: "https://samltest.id/saml/idp",
+			//IDPSSOURL:      "https://samltest.id/idp/profile/SAML2/Redirect/SSO",
+			Mapper:        "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
+			AttributesMap: attributesMap,
 		},
 	)
 
@@ -150,10 +150,10 @@ func TestXmlMetadataValues(t *testing.T) {
 			Label:          "samlProviderTestLabel",
 			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
 			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
-			IDPMetadataURL: "https://samltest.id/saml/idp",
-			IDPSSOURL:      "https://samltest.id/idp/profile/SAML2/Redirect/SSO",
-			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
-			AttributesMap:  attributesMap,
+			//IDPMetadataURL: "https://samltest.id/saml/idp",
+			//IDPSSOURL:      "https://samltest.id/idp/profile/SAML2/Redirect/SSO",
+			Mapper:        "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
+			AttributesMap: attributesMap,
 		},
 	)
 
