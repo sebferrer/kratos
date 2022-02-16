@@ -406,9 +406,6 @@
                 ]
               },
               "else":{
-                "required": [
-                  "idp_sso_url"
-                ],
                 "properties": {
                   "idp_certificate_path": {
                     "const": {}
@@ -417,6 +414,9 @@
                     "const": {}
                   },
                   "idp_entity_id":{
+                    "const":{}
+                  },
+                  "idp_sso_url":{
                     "const":{}
                   }
                 }

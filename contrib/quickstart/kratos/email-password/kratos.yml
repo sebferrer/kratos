@@ -42,11 +42,13 @@ selfservice:
             mapper_url: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet
 
             idp_information: 
-              #idp_metadata_url: https://samltest.id/saml/idp #Optionnal
-              idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
-              idp_entity_id: https://samltest.id/saml/idp
-              idp_certificate_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert
-              idp_logout_url: https://samltest.id/
+
+              idp_metadata_url: https://samltest.id/saml/idp #Optionnal
+
+              #idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO              
+              #idp_entity_id: https://samltest.id/saml/idp
+              #idp_certificate_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert
+              #idp_logout_url: https://samltest.id/
 
             attributes_map:
               id: mail
