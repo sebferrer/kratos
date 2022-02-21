@@ -175,7 +175,7 @@ func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	} //ACS SUPPORT
 }
 
-func (s *Strategy) getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
+func getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
 
 	r.ParseForm()
 
@@ -219,7 +219,7 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		s.forwardError(w, r, err)
 	}
 
-	attributes, err := s.getAttributesFromAssertion(w, r, *m)
+	attributes, err := getAttributesFromAssertion(w, r, *m)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return

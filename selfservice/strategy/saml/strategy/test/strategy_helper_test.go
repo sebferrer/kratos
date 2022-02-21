@@ -2,10 +2,14 @@ package strategy_test
 
 import (
 	"context"
+	"crypto/rand"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +22,9 @@ import (
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
 	"github.com/ory/kratos/x"
 )
+
+var TimeNow = func() time.Time { return time.Now().UTC() }
+var RandReader = rand.Reader
 
 func newReturnTs(t *testing.T, reg driver.Registry) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,4 +107,29 @@ func AssertSystemError(t *testing.T, errTS *httptest.Server, res *http.Response,
 
 	assert.Equal(t, int64(code), gjson.GetBytes(body, "code").Int(), "%s", body)
 	assert.Contains(t, gjson.GetBytes(body, "reason").String(), reason, "%s", body)
+}
+
+func mustParseURL(s string) url.URL {
+	rv, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return *rv
+}
+
+var makeRequestWithCookieJar = func(t *testing.T, destination string, fv url.Values, jar *cookiejar.Jar) (*http.Response, []byte) {
+	res, err := newClient(t, jar).PostForm(destination, fv)
+	require.NoError(t, err, destination)
+
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, res.Body.Close())
+	require.NoError(t, err)
+
+	require.Equal(t, 200, res.StatusCode, "%s: %s\n\t%s", destination, res.Request.URL.String(), body)
+
+	return res, body
+}
+
+var makeRequest = func(t *testing.T, action string, fv url.Values) (*http.Response, []byte) {
+	return makeRequestWithCookieJar(t, action, fv, nil)
 }

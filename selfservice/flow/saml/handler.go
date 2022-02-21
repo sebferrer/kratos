@@ -184,6 +184,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	var idpMetadata *samlidp.EntityDescriptor
 
 	if c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"] != "" {
+
 		//The metadata file is provided
 		idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"])
 		if err != nil {
@@ -194,7 +195,9 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		if err != nil {
 			return err
 		}
+
 	} else {
+
 		//The metadata file is not provided
 		// So were are creating fake IDP metadata based on what is provided by the user on the config file
 		entityIDURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_entity_id"]) //A modifier
@@ -251,21 +254,17 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 
 	RouteSamlAcsWithSlash := RouteSamlAcs
 
-	if RouteSamlAcs[0] != '/' && publicUrlString[len(publicUrlString)-1] != '/' {
-		u, err := url.Parse(publicUrlString + "/" + RouteSamlAcsWithSlash)
-		if err != nil {
-			return err
-		}
-		samlMiddleWare.ServiceProvider.AcsURL = *u
-	} else if RouteSamlAcs[0] == '/' && publicUrlString[len(publicUrlString)-1] == '/' {
+	if publicUrlString[len(publicUrlString)-1] != '/' {
 
-		publicUrlStringWithoutSlash := strings.ReplaceAll(publicUrlString, "/", "")
-		u, err := url.Parse(publicUrlStringWithoutSlash + RouteSamlAcsWithSlash)
+		u, err := url.Parse(publicUrlString + RouteSamlAcsWithSlash)
 		if err != nil {
 			return err
 		}
 		samlMiddleWare.ServiceProvider.AcsURL = *u
-	} else {
+
+	} else if publicUrlString[len(publicUrlString)-1] == '/' {
+
+		publicUrlString = publicUrlString[:len(publicUrlString)-1]
 		u, err := url.Parse(publicUrlString + RouteSamlAcsWithSlash)
 		if err != nil {
 			return err
@@ -273,6 +272,8 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		samlMiddleWare.ServiceProvider.AcsURL = *u
 	}
 
+	samlMiddleWare.ServiceProvider.EntityID = samlMiddleWare.ServiceProvider.AcsURL.String()
+	samlMiddleWare.ServiceProvider.AuthnNameIDFormat = samlidp.UnspecifiedNameIDFormat
 	samlMiddleware = samlMiddleWare
 
 	return nil
