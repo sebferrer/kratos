@@ -43,7 +43,6 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 	if err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
 	}
-
 	var jsonClaims bytes.Buffer
 	if err := json.NewEncoder(&jsonClaims).Encode(claims); err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)

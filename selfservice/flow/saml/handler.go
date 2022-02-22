@@ -150,21 +150,22 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	if _, err := h.d.SessionManager().FetchFromRequest(r.Context(), r); err != nil {
 		if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 			// No session exists yet
-
 			samlMiddleware.HandleStartAuthFlow(w, r)
 		} else {
-			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+			// A session already exist, we redirect to the main page
+			http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
 		}
 	} else {
-		http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
+		h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+
 	}
 }
 
 func (h *Handler) instantiateMiddleware(r *http.Request) error {
+
+	//Create a SAMLProvider object from the config file
 	config := h.d.Config(r.Context())
-
 	var c samlstrategy.ConfigurationCollection
-
 	conf := config.SelfServiceStrategy("saml").Config
 	if err := jsonx.
 		NewStrictDecoder(bytes.NewBuffer(conf)).
@@ -172,6 +173,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
+	//Key pair to encrypt and sign SAML requests
 	keyPair, err := tls.LoadX509KeyPair(strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PublicCertPath, "file://", "", 1), strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PrivateKeyPath, "file://", "", 1))
 	if err != nil {
 		return err
@@ -183,6 +185,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 
 	var idpMetadata *samlidp.EntityDescriptor
 
+	//We check if the metadata file is provided
 	if c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"] != "" {
 
 		//The metadata file is provided
@@ -191,6 +194,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 			return err
 		}
 
+		//Parse the content of metadata file into a Golang struct
 		idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
 		if err != nil {
 			return err
@@ -205,22 +209,28 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 			return err
 		}
 
+		// The IDP SSO URL
 		IDPSSOURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_sso_url"])
 		if err != nil {
 			return err
 		}
 
+		// The IDP Logout URL
 		IDPlogoutURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_logout_url"])
 		if err != nil {
 			return err
 		}
+
+		// The certificate of the IDP
 		certificate, err := ioutil.ReadFile(strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_certificate_path"], "file://", "", 1))
 		if err != nil {
 			return err
 		}
 
+		// We parse it into a x509.Certificate object
 		IDPCertificate := mustParseCertificate(certificate)
 
+		// Because the metadata file is not provided, we need to simulate an IDP to create artificial metadata from the data entered in the conf file
 		simulatedIDP := samlidp.IdentityProvider{
 			Key:         nil,
 			Certificate: IDPCertificate,
@@ -230,15 +240,18 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 			LogoutURL:   *IDPlogoutURL,
 		}
 
+		// Now we assign the artificial metadata to our SP to act as if it had been filled in
 		idpMetadata = simulatedIDP.Metadata()
 
 	}
 
+	// The main URL
 	rootURL, err := url.Parse(config.SelfServiceBrowserDefaultReturnTo().String())
 	if err != nil {
 		return err
 	}
 
+	// Here we create a MiddleWare to transform Kratos into a Service Provider
 	samlMiddleWare, err := samlsp.New(samlsp.Options{
 		URL:         *rootURL,
 		Key:         keyPair.PrivateKey.(*rsa.PrivateKey),
@@ -252,8 +265,8 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 
 	var publicUrlString = config.SelfPublicURL().String()
 
+	// Sometimes there is an issue with double slash into the url so we prevent it
 	RouteSamlAcsWithSlash := RouteSamlAcs
-
 	if publicUrlString[len(publicUrlString)-1] != '/' {
 
 		u, err := url.Parse(publicUrlString + RouteSamlAcsWithSlash)
@@ -272,8 +285,15 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		samlMiddleWare.ServiceProvider.AcsURL = *u
 	}
 
+	//metadata, err := url.Parse(publicUrlString + RouteSamlMetadata)
+	//samlMiddleWare.ServiceProvider.MetadataURL = *metadata
+
+	// The EntityID in the AuthnRequest is the Metadata URL
 	samlMiddleWare.ServiceProvider.EntityID = samlMiddleWare.ServiceProvider.AcsURL.String()
+
+	// The issuer format is unspecified
 	samlMiddleWare.ServiceProvider.AuthnNameIDFormat = samlidp.UnspecifiedNameIDFormat
+
 	samlMiddleware = samlMiddleWare
 
 	return nil

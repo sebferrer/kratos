@@ -54,11 +54,10 @@ selfservice:
             idp_information: 
 
               #idp_metadata_url: https://samltest.id/saml/idp #Optionnal
-              idp_metadata_url: http://sebferrer.fr/saml/metadata-test.xml
+              idp_metadata_url: https://sso.federation.ovh/FederationMetadata/2007-06/FederationMetadata.xml
 
               #idp_sso_url: https://samltest.id/idp/profile/SAML2/Redirect/SSO
               #idp_sso_url: https://sso.federation.ovh/adfs/ls/
-              
               #idp_entity_id: https://samltest.id/saml/idp
               #idp_certificate_path: file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert
               #idp_logout_url: https://samltest.id/
