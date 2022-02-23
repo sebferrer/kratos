@@ -175,6 +175,7 @@ func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	} //ACS SUPPORT
 }
 
+// Retrieves the user's attributes from the SAML Assertion
 func getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
 
 	r.ParseForm()
@@ -212,6 +213,7 @@ func getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp
 	return attributes, nil
 }
 
+// Handle /selfservice/methods/saml/acs
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	m, err := samlflow.GetMiddleware()
@@ -219,24 +221,28 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		s.forwardError(w, r, err)
 	}
 
+	// We get the user's attributes from the SAML Response (assertion)
 	attributes, err := getAttributesFromAssertion(w, r, *m)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
 	}
 
+	// We get the provider information from the config file
 	provider, err := s.provider(r.Context(), r)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
 	}
 
+	// We translate SAML Attributes into claims (To create an identity we need these claims)
 	claims, err := provider.Claims(r.Context(), s.d.Config(r.Context()), attributes)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
 	}
 
+	// Now that we have the claims and the provider, we have to decide if we log or register the user
 	if ff, err := s.processLoginOrRegister(w, r, provider, claims); err != nil {
 		if ff != nil {
 			s.forwardError(w, r, err)
@@ -249,6 +255,7 @@ func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, err erro
 	s.d.LoginFlowErrorHandler().WriteFlowError(w, r, nil, s.NodeGroup(), err)
 }
 
+// Return the SAML Provider
 func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
 	c, err := s.Config(ctx)
 	if err != nil {
@@ -267,6 +274,7 @@ func (s *Strategy) NodeGroup() node.Group {
 	return node.SAMLGroup
 }
 
+// Translate YAML Config file into a SAML Provider struct
 func (s *Strategy) Config(ctx context.Context) (*samlstrategy.ConfigurationCollection, error) {
 	var c samlstrategy.ConfigurationCollection
 

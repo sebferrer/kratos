@@ -109,8 +109,7 @@ selfservice:
             - hook: session
         saml:
           hooks:
-            -
-              hook: session
+            - hook: session
 
 log:
   level: debug

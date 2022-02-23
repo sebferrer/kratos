@@ -14,7 +14,6 @@ type Provider interface {
 	Config() *Configuration
 }
 
-// ConvertibleBoolean is used as Apple casually sends the email_verified field as a string.
 type Claims struct {
 	Issuer              string               `json:"iss,omitempty"`
 	Subject             string               `json:"sub,omitempty"`

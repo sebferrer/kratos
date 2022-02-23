@@ -32,7 +32,7 @@ import (
 
 const (
 	RouteSamlMetadata  = "/self-service/methods/saml/metadata"
-	RouteSamlLoginInit = "/self-service/methods/saml/browser"
+	RouteSamlLoginInit = "/self-service/methods/saml/browser" //Redirect to the IDP
 	RouteSamlAcs       = "/self-service/methods/saml/acs"
 )
 
@@ -98,6 +98,7 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
 }
 
+// Handle /selfservice/methods/saml/metadata
 func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if samlMiddleware == nil {
@@ -109,14 +110,9 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 
 // swagger:route GET /self-service/methods/saml/browser v0alpha2 initializeSelfServiceSamlFlowForBrowsers
 //
-// Initialize Registration Flow for APIs, Services, Apps, ...
+// Initialize Authentication Flow for SAML (Either the login or the register)
 //
-// This endpoint initiates a registration flow for API clients such as mobile devices, smart TVs, and so on.
-//
-// If a valid provided session cookie or session token is provided, a 400 Bad Request error
-// will be returned unless the URL query parameter `?refresh=true` is set.
-//
-// To fetch an existing registration flow call `/self-service/registration/flows?flow=<flow_id>`.
+// If you already have a session, it will redirect you to the main page.
 //
 // You MUST NOT use this endpoint in client-side (Single Page Apps, ReactJS, AngularJS) nor server-side (Java Server
 // Pages, NodeJS, PHP, Golang, ...) browser applications. Using this endpoint in these applications will make
@@ -124,12 +120,10 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 //
 // In the case of an error, the `error.id` of the JSON response body can be one of:
 //
-// - `session_already_available`: The user is already signed in.
 // - `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
 //
-// This endpoint MUST ONLY be used in scenarios such as native mobile apps (React Native, Objective C, Swift, Java, ...).
 //
-// More information can be found at [Ory Kratos User Login and User Registration Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
+// More information can be found at [Ory Kratos SAML Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
 //
 //     Schemes: http, https
 //
@@ -139,6 +133,7 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 //       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
+	// Middleware is a singleton so we have to verify that it exist
 	if samlMiddleware == nil {
 		if err := h.instantiateMiddleware(r); err != nil {
 			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
@@ -147,6 +142,7 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 	conf := h.d.Config(r.Context())
 
+	// We check if the user already have an active session.
 	if _, err := h.d.SessionManager().FetchFromRequest(r.Context(), r); err != nil {
 		if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
 			// No session exists yet
@@ -266,6 +262,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	var publicUrlString = config.SelfPublicURL().String()
 
 	// Sometimes there is an issue with double slash into the url so we prevent it
+	// Crewjam library use default route for ACS and metadat but we want to overwrite them
 	RouteSamlAcsWithSlash := RouteSamlAcs
 	if publicUrlString[len(publicUrlString)-1] != '/' {
 
@@ -285,11 +282,12 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		samlMiddleWare.ServiceProvider.AcsURL = *u
 	}
 
-	//metadata, err := url.Parse(publicUrlString + RouteSamlMetadata)
-	//samlMiddleWare.ServiceProvider.MetadataURL = *metadata
+	// Crewjam library use default route for ACS and metadat but we want to overwrite them
+	metadata, err := url.Parse(publicUrlString + RouteSamlMetadata)
+	samlMiddleWare.ServiceProvider.MetadataURL = *metadata
 
 	// The EntityID in the AuthnRequest is the Metadata URL
-	samlMiddleWare.ServiceProvider.EntityID = samlMiddleWare.ServiceProvider.AcsURL.String()
+	samlMiddleWare.ServiceProvider.EntityID = samlMiddleWare.ServiceProvider.MetadataURL.String()
 
 	// The issuer format is unspecified
 	samlMiddleWare.ServiceProvider.AuthnNameIDFormat = samlidp.UnspecifiedNameIDFormat

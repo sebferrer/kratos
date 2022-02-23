@@ -303,6 +303,7 @@
       "type": "object",
       "properties": {
         "id": {
+          "title":"ID of the IdentityProvider",
           "type": "string",
           "examples": [
             "activedirectory1"
@@ -310,26 +311,29 @@
         },
         "label": {
           "title": "Optional string which will be used when generating labels for UI buttons.",
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "Microsoft Active Directory"
+          ]
         },
         "public_cert_path": {
           "title": "Public Certificate Path",
-          "description": "/",
+          "description": "The Public Certificate for your SAML Messages",
           "type": "string",
           "format": "uri",
           "examples": [
-            "file://path/to/oidc.jsonnet",
-            "https://foo.bar.com/path/to/oidc.jsonnet"
+            "file://path/to/cert",
+            "https://foo.bar.com/path/to/cert"
           ]
         },
         "private_key_path": {
-          "title": "Private Certificate Path",
-          "description": "/",
+          "title": "Private Key Path",
+          "description": "The Private Key for your SAML Messages",
           "type": "string",
           "format": "uri",
           "examples": [
-            "file://path/to/oidc.jsonnet",
-            "https://foo.bar.com/path/to/oidc.jsonnet"
+            "file://path/to/key",
+            "https://foo.bar.com/path/to/key"
           ]
         },
         "mapper_url": {
@@ -401,7 +405,6 @@
                 "required": [
                   "idp_logout_url",
                   "idp_certificate_path",
-                  "idp_sso_url",
                   "idp_entity_id"
                 ]
               },
@@ -1494,7 +1497,7 @@
                   "properties": {
                     "providers": {
                       "title": "SAML Provider",
-                      "description": "A list and configuration of OAuth2 and OpenID Connect providers Ory Kratos should integrate with.",
+                      "description": "All information required to implement a SAML authentication",
                       "type": "array",
                       "items": {
                         "$ref": "#/definitions/selfServiceSAMLProvider"

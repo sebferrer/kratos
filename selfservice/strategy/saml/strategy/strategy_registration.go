@@ -39,16 +39,20 @@ func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registrat
 }
 
 func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*login.Flow, error) {
+	// Fetch fetches the file contents from the mapper file.
 	jn, err := s.f.Fetch(provider.Config().Mapper)
 	if err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
 	}
+
+	//
 	var jsonClaims bytes.Buffer
 	if err := json.NewEncoder(&jsonClaims).Encode(claims); err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, nil, err)
 	}
 
-	i := identity.NewIdentity(config.DefaultIdentityTraitsSchemaID) // identity creation
+	// Identity Creation
+	i := identity.NewIdentity(config.DefaultIdentityTraitsSchemaID)
 
 	vm := jsonnet.MakeVM()
 	vm.ExtCode("claims", jsonClaims.String())
@@ -84,15 +88,18 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 		WithField("mapper_jsonnet_url", provider.Config().Mapper).
 		Debug("Merged form values and SAML Jsonnet output.")
 
+	// Verify the identity
 	if err := s.d.IdentityValidator().Validate(r.Context(), i); err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
+	// Create new uniq credentials identifier for user is database
 	creds, err := NewCredentialsForSAML(claims.Subject, provider.Config().ID)
 	if err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
+	// Set the identifiers to the identity
 	i.SetCredentials(s.ID(), *creds)
 
 	if err := s.d.RegistrationExecutor().PostRegistrationHook(w, r, identity.CredentialsTypeSAML, a, i); err != nil {
