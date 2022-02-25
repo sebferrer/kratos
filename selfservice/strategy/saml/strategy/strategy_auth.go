@@ -10,6 +10,10 @@ import (
 	"github.com/ory/x/sqlcon"
 )
 
+//#################
+// This file is called when the /ACS receives an assertion, the method below allows you to define whether to register or login the user indicated in the assertion
+//#################
+
 // Handle SAML Assertion and process to either login or register
 func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request, provider samlsp.Provider, claims *samlsp.Claims) (*flow.Flow, error) {
 

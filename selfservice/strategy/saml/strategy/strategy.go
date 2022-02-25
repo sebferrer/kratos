@@ -87,6 +87,10 @@ type registrationStrategyDependencies interface {
 	session.ManagementProvider
 }
 
+//###############
+// This file is like an helper for login and register flow
+//###############
+
 type Strategy struct {
 	d  registrationStrategyDependencies
 	f  *fetcher.Fetcher
@@ -103,71 +107,7 @@ func NewStrategy(d registrationStrategyDependencies) *Strategy {
 	}
 }
 
-func (s *Strategy) ID() identity.CredentialsType {
-	return identity.CredentialsTypeSAML
-}
-
-func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Flow, provider string, traits []byte, err error) error {
-	switch rf := f.(type) {
-	case *login.Flow:
-		return err
-	case *registration.Flow:
-		// Reset all nodes to not confuse users.
-		// This is kinda hacky and will probably need to be updated at some point.
-
-		rf.UI.Nodes = node.Nodes{}
-
-		// Adds the "Continue" button
-		rf.UI.SetCSRF(s.d.GenerateCSRFToken(r))
-		AddProvider(rf.UI, provider, text.NewInfoRegistrationContinue())
-
-		if traits != nil {
-			traitNodes, err := container.NodesFromJSONSchema(node.OpenIDConnectGroup,
-				s.d.Config(r.Context()).DefaultIdentityTraitsSchemaURL().String(), "", nil)
-			if err != nil {
-				return err
-			}
-
-			rf.UI.Nodes = append(rf.UI.Nodes, traitNodes...)
-			rf.UI.UpdateNodeValuesFromJSON(traits, "traits", node.OpenIDConnectGroup)
-		}
-
-		return err
-	case *settings.Flow:
-		return err
-	}
-
-	return err
-}
-
-func uid(provider, subject string) string {
-	return fmt.Sprintf("%s:%s", provider, subject)
-}
-
-func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
-	for _, c := range cc {
-		if c.Type == s.ID() && gjson.ValidBytes(c.Config) {
-			var conf CredentialsConfig
-			if err = json.Unmarshal(c.Config, &conf); err != nil {
-				return 0, errors.WithStack(err)
-			}
-
-			for _, ider := range c.Identifiers {
-				parts := strings.Split(ider, ":")
-				if len(parts) != 2 {
-					continue
-				}
-
-				if parts[0] == conf.Providers[0].Provider && parts[1] == conf.Providers[0].Subject && len(conf.Providers[0].Subject) > 1 && len(conf.Providers[0].Provider) > 1 {
-					count++
-				}
-
-			}
-		}
-	}
-	return
-}
-
+// We indicate here that when the ACS endpoint receives a POST request, we call the handleCallback method to process it
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
 	if handle, _, _ := r.Lookup("POST", RouteAcs); handle == nil {
@@ -176,7 +116,7 @@ func (s *Strategy) setRoutes(r *x.RouterPublic) {
 }
 
 // Retrieves the user's attributes from the SAML Assertion
-func getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
+func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
 
 	r.ParseForm()
 
@@ -213,7 +153,7 @@ func getAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp
 	return attributes, nil
 }
 
-// Handle /selfservice/methods/saml/acs
+// Handle /selfservice/methods/saml/acs | Receive SAML response, parse the attributes and start auth flow
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	m, err := samlflow.GetMiddleware()
@@ -222,7 +162,7 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// We get the user's attributes from the SAML Response (assertion)
-	attributes, err := getAttributesFromAssertion(w, r, *m)
+	attributes, err := s.GetAttributesFromAssertion(w, r, *m)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
@@ -300,4 +240,69 @@ func (s *Strategy) populateMethod(r *http.Request, c *container.Container, messa
 	//AddSamlProviders(c, conf.Providers, message)
 
 	return nil
+}
+
+func (s *Strategy) ID() identity.CredentialsType {
+	return identity.CredentialsTypeSAML
+}
+
+func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Flow, provider string, traits []byte, err error) error {
+	switch rf := f.(type) {
+	case *login.Flow:
+		return err
+	case *registration.Flow:
+		// Reset all nodes to not confuse users.
+		// This is kinda hacky and will probably need to be updated at some point.
+
+		rf.UI.Nodes = node.Nodes{}
+
+		// Adds the "Continue" button
+		rf.UI.SetCSRF(s.d.GenerateCSRFToken(r))
+		AddProvider(rf.UI, provider, text.NewInfoRegistrationContinue())
+
+		if traits != nil {
+			traitNodes, err := container.NodesFromJSONSchema(node.OpenIDConnectGroup,
+				s.d.Config(r.Context()).DefaultIdentityTraitsSchemaURL().String(), "", nil)
+			if err != nil {
+				return err
+			}
+
+			rf.UI.Nodes = append(rf.UI.Nodes, traitNodes...)
+			rf.UI.UpdateNodeValuesFromJSON(traits, "traits", node.OpenIDConnectGroup)
+		}
+
+		return err
+	case *settings.Flow:
+		return err
+	}
+
+	return err
+}
+
+func uid(provider, subject string) string {
+	return fmt.Sprintf("%s:%s", provider, subject)
+}
+
+func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
+	for _, c := range cc {
+		if c.Type == s.ID() && gjson.ValidBytes(c.Config) {
+			var conf CredentialsConfig
+			if err = json.Unmarshal(c.Config, &conf); err != nil {
+				return 0, errors.WithStack(err)
+			}
+
+			for _, ider := range c.Identifiers {
+				parts := strings.Split(ider, ":")
+				if len(parts) != 2 {
+					continue
+				}
+
+				if parts[0] == conf.Providers[0].Provider && parts[1] == conf.Providers[0].Subject && len(conf.Providers[0].Subject) > 1 && len(conf.Providers[0].Provider) > 1 {
+					count++
+				}
+
+			}
+		}
+	}
+	return
 }

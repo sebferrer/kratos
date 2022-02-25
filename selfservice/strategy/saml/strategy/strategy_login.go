@@ -17,12 +17,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+//#################
+// This file contains all the methods and functions allowing the login of a user.
+//#################
+
+// Implement the interface
 var _ login.Strategy = new(Strategy)
 
+//Call at the creation of Kratos, when Kratos implement all authentication routes
 func (s *Strategy) RegisterLoginRoutes(r *x.RouterPublic) {
 	s.setRoutes(r)
 }
 
+//Login and give a session to the user
 func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login.Flow, provider samlsp.Provider, c *identity.Credentials, i *identity.Identity, claims *samlsp.Claims) (*registration.Flow, error) {
 
 	var o CredentialsConfig
@@ -40,10 +47,12 @@ func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login
 	return nil, nil
 }
 
+// Method not used but necessary to implement the interface
 func (s *Strategy) Login(w http.ResponseWriter, r *http.Request, f *login.Flow, ss *session.Session) (i *identity.Identity, err error) {
 	return nil, nil
 }
 
+// Method not used but necessary to implement the interface
 func (s *Strategy) PopulateLoginMethod(r *http.Request, requestedAAL identity.AuthenticatorAssuranceLevel, l *login.Flow) error {
 	if l.Type != flow.TypeBrowser {
 		return nil

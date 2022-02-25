@@ -28,6 +28,7 @@ func NewProviderSAML(
 	}
 }
 
+// Translate attributes from saml asseryion into kratos claims
 func (d *ProviderSAML) Claims(ctx context.Context, config *config.Config, SAMLAttribute samlsp.Attributes) (*Claims, error) {
 
 	var c ConfigurationCollection

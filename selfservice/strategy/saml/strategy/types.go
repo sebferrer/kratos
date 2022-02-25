@@ -17,6 +17,7 @@ type CredentialsConfig struct {
 	Providers []ProviderCredentialsConfig `json:"providers"`
 }
 
+//Create an uniq identifier for user in database. Its look like "id + the id of the saml provider"
 func NewCredentialsForSAML(subject string, provider string) (*identity.Credentials, error) {
 	var b bytes.Buffer
 	if err := json.NewEncoder(&b).Encode(CredentialsConfig{

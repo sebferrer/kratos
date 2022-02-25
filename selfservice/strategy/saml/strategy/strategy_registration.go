@@ -13,29 +13,23 @@ import (
 	"github.com/ory/kratos/selfservice/flow/login"
 	"github.com/ory/kratos/selfservice/flow/registration"
 	samlsp "github.com/ory/kratos/selfservice/strategy/saml"
+	"github.com/ory/kratos/text"
 
 	"github.com/tidwall/gjson"
 
-	"github.com/ory/kratos/text"
 	"github.com/ory/kratos/x"
 )
 
+//#################
+// This file contains all the methods and functions allowing the registration of a user.
+//#################
+
+// Implement the interface
 var _ registration.Strategy = new(Strategy)
 
+//Call at the creation of Kratos, when Kratos implement all authentication routes
 func (s *Strategy) RegisterRegistrationRoutes(r *x.RouterPublic) {
 	s.setRoutes(r)
-}
-
-func (s *Strategy) PopulateRegistrationMethod(r *http.Request, f *registration.Flow) error {
-	if f.Type != flow.TypeBrowser {
-		return nil
-	}
-
-	return s.populateMethod(r, f.UI, text.NewInfoRegistrationWith)
-}
-
-func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registration.Flow, i *identity.Identity) (err error) {
-	return nil
 }
 
 func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*login.Flow, error) {
@@ -107,4 +101,18 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 	}
 
 	return nil, nil
+}
+
+// Method not used but necessary to implement the interface
+func (s *Strategy) PopulateRegistrationMethod(r *http.Request, f *registration.Flow) error {
+	if f.Type != flow.TypeBrowser {
+		return nil
+	}
+
+	return s.populateMethod(r, f.UI, text.NewInfoRegistrationWith)
+}
+
+// Method not used but necessary to implement the interface
+func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registration.Flow, i *identity.Identity) (err error) {
+	return nil
 }
