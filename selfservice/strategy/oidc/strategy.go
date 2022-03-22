@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -65,6 +64,7 @@ type dependencies interface {
 	identity.ValidationProvider
 	identity.PrivilegedPoolProvider
 	identity.ActiveCredentialsCounterStrategyProvider
+	identity.ManagementProvider
 
 	session.ManagementProvider
 	session.HandlerProvider
@@ -113,10 +113,10 @@ type authCodeContainer struct {
 	Traits json.RawMessage `json:"traits"`
 }
 
-func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
+func (s *Strategy) CountActiveFirstFactorCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
 	for _, c := range cc {
 		if c.Type == s.ID() && gjson.ValidBytes(c.Config) {
-			var conf CredentialsConfig
+			var conf identity.CredentialsOIDC
 			if err = json.Unmarshal(c.Config, &conf); err != nil {
 				return 0, errors.WithStack(err)
 			}
@@ -136,6 +136,10 @@ func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identi
 		}
 	}
 	return
+}
+
+func (s *Strategy) CountActiveMultiFactorCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
+	return 0, nil
 }
 
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
@@ -366,10 +370,6 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 	}
 }
 
-func uid(provider, subject string) string {
-	return fmt.Sprintf("%s:%s", provider, subject)
-}
-
 func (s *Strategy) populateMethod(r *http.Request, c *container.Container, message func(provider string) *text.Message) error {
 	conf, err := s.Config(r.Context())
 	if err != nil {
@@ -463,4 +463,11 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 
 func (s *Strategy) NodeGroup() node.Group {
 	return node.OpenIDConnectGroup
+}
+
+func (s *Strategy) CompletedAuthenticationMethod(ctx context.Context) session.AuthenticationMethod {
+	return session.AuthenticationMethod{
+		Method: s.ID(),
+		AAL:    identity.AuthenticatorAssuranceLevel1,
+	}
 }

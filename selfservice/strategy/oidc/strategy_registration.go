@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ory/herodot"
 	"github.com/ory/kratos/continuity"
 
 	"github.com/google/go-jsonnet"
@@ -75,6 +74,7 @@ func (s *Strategy) newLinkDecoder(p interface{}, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+
 	raw, err := sjson.SetBytes(linkSchema, "properties.traits.$ref", ds.String()+"#/properties/traits")
 	if err != nil {
 		return errors.WithStack(err)
@@ -101,7 +101,7 @@ func (s *Strategy) newLinkDecoder(p interface{}, r *http.Request) error {
 func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registration.Flow, i *identity.Identity) (err error) {
 	var p SubmitSelfServiceRegistrationFlowWithOidcMethodBody
 	if err := s.newLinkDecoder(&p, r); err != nil {
-		return s.handleError(w, r, f, "", nil, errors.WithStack(herodot.ErrBadRequest.WithDebug(err.Error()).WithReasonf("Unable to parse HTTP form request: %s", err.Error())))
+		return s.handleError(w, r, f, "", nil, err)
 	}
 
 	var pid = p.Provider // this can come from both url query and post body
@@ -154,7 +154,7 @@ func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registrat
 }
 
 func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a *registration.Flow, token *oauth2.Token, claims *Claims, provider Provider, container *authCodeContainer) (*login.Flow, error) {
-	if _, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeOIDC, uid(provider.Config().ID, claims.Subject)); err == nil {
+	if _, _, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeOIDC, identity.OIDCUniqueID(provider.Config().ID, claims.Subject)); err == nil {
 		// If the identity already exists, we should perform the login flow instead.
 
 		// That will execute the "pre registration" hook which allows to e.g. disallow this flow. The registration
@@ -254,7 +254,7 @@ func (s *Strategy) processRegistration(w http.ResponseWriter, r *http.Request, a
 		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}
 
-	creds, err := NewCredentials(it, cat, crt, provider.Config().ID, claims.Subject)
+	creds, err := identity.NewCredentialsOIDC(it, cat, crt, provider.Config().ID, claims.Subject)
 	if err != nil {
 		return nil, s.handleError(w, r, a, provider.Config().ID, i.Traits, err)
 	}

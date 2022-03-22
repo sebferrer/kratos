@@ -167,6 +167,24 @@ func TestInitFlow(t *testing.T) {
 				testhelpers.GetSelfServiceRedirectLocation(t, publicTS.URL+registration.RouteInitBrowserFlow),
 			)
 		})
+
+		t.Run("case=redirects with 303", func(t *testing.T) {
+			c := &http.Client{}
+			// don't get the reference, instead copy the values, so we don't alter the client directly.
+			*c = *publicTS.Client()
+			// prevent the redirect
+			c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+			req, err := http.NewRequest("GET", publicTS.URL+registration.RouteInitBrowserFlow, nil)
+			require.NoError(t, err)
+
+			res, err := c.Do(req)
+			require.NoError(t, err)
+			// here we check that the redirect status is 303
+			require.Equal(t, http.StatusSeeOther, res.StatusCode)
+			defer res.Body.Close()
+		})
 	})
 }
 
@@ -285,7 +303,7 @@ func TestGetFlow(t *testing.T) {
 	})
 
 	t.Run("case=expired with return_to", func(t *testing.T) {
-		conf.MustSet(config.ViperKeyURLsWhitelistedReturnToDomains, []string{"https://www.ory.sh/"})
+		conf.MustSet(config.ViperKeyURLsAllowedReturnToDomains, []string{"https://www.ory.sh/"})
 		client := testhelpers.NewClientWithCookies(t)
 		setupRegistrationUI(t, client)
 		body := x.EasyGetBody(t, client, public.URL+registration.RouteInitBrowserFlow+"?return_to=https://www.ory.sh")

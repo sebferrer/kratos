@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ory/x/snapshotx"
+
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
@@ -62,7 +64,7 @@ func TestViperProvider(t *testing.T) {
 			assert.Equal(t, "http://public.kratos.ory.sh", p.SelfPublicURL().String())
 
 			var ds []string
-			for _, v := range p.SelfServiceBrowserWhitelistedReturnToDomains() {
+			for _, v := range p.SelfServiceBrowserAllowedReturnToDomains() {
 				ds = append(ds, v.String())
 			}
 
@@ -1024,6 +1026,18 @@ func TestIdentitySchemaValidation(t *testing.T) {
 	})
 }
 
+func TestPasswordless(t *testing.T) {
+	ctx := context.Background()
+	conf, err := config.New(ctx, logrusx.New("", ""), os.Stderr,
+		configx.SkipValidation(),
+		configx.WithValue(config.ViperKeyWebAuthnPasswordless, true))
+	require.NoError(t, err)
+
+	assert.True(t, conf.WebAuthnForPasswordless())
+	conf.MustSet(config.ViperKeyWebAuthnPasswordless, false)
+	assert.False(t, conf.WebAuthnForPasswordless())
+}
+
 func TestChangeMinPasswordLength(t *testing.T) {
 	t.Run("case=must fail on minimum password length below enforced minimum", func(t *testing.T) {
 		ctx := context.Background()
@@ -1046,6 +1060,41 @@ func TestChangeMinPasswordLength(t *testing.T) {
 	})
 }
 
+func TestCourierSMS(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("case=configs set", func(t *testing.T) {
+		conf, _ := config.New(ctx, logrusx.New("", ""), os.Stderr,
+			configx.WithConfigFiles("stub/.kratos.courier.sms.yaml"), configx.SkipValidation())
+		assert.True(t, conf.CourierSMSEnabled())
+		snapshotx.SnapshotTExcept(t, conf.CourierSMSRequestConfig(), nil)
+		assert.Equal(t, "+49123456789", conf.CourierSMSFrom())
+	})
+
+	t.Run("case=defaults", func(t *testing.T) {
+		conf, _ := config.New(ctx, logrusx.New("", ""), os.Stderr, configx.SkipValidation())
+
+		assert.False(t, conf.CourierSMSEnabled())
+		snapshotx.SnapshotTExcept(t, conf.CourierSMSRequestConfig(), nil)
+		assert.Equal(t, "Ory Kratos", conf.CourierSMSFrom())
+	})
+}
+
+func TestCourierMessageTTL(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("case=configs set", func(t *testing.T) {
+		conf, _ := config.New(ctx, logrusx.New("", ""), os.Stderr,
+			configx.WithConfigFiles("stub/.kratos.courier.messageTTL.yaml"), configx.SkipValidation())
+		assert.Equal(t, conf.CourierMessageTTL(), time.Duration(5*time.Minute))
+	})
+
+	t.Run("case=defaults", func(t *testing.T) {
+		conf, _ := config.New(ctx, logrusx.New("", ""), os.Stderr, configx.SkipValidation())
+		assert.Equal(t, conf.CourierMessageTTL(), time.Duration(1*time.Hour))
+	})
+}
+
 func TestCourierTemplatesConfig(t *testing.T) {
 	ctx := context.Background()
 
@@ -1053,13 +1102,6 @@ func TestCourierTemplatesConfig(t *testing.T) {
 		_, err := config.New(ctx, logrusx.New("", ""), os.Stderr,
 			configx.WithConfigFiles("stub/.kratos.courier.remote.partial.templates.yaml"))
 		assert.NoError(t, err)
-	})
-
-	t.Run("case=missing required body plaintext on invalid recovery template", func(t *testing.T) {
-		_, err := config.New(ctx, logrusx.New("", ""), os.Stderr,
-			configx.WithConfigFiles("stub/.kratos.courier.remote.invalid.body.yaml"))
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "missing properties: \"plaintext\"")
 	})
 
 	t.Run("case=load remote template with fallback template overrides path", func(t *testing.T) {

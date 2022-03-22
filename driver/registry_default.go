@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"strings"
 	"sync"
@@ -186,9 +187,11 @@ func (m *RegistryDefault) RegisterAdminRoutes(ctx context.Context, router *x.Rou
 	m.VerificationHandler().RegisterAdminRoutes(router)
 	m.AllVerificationStrategies().RegisterAdminRoutes(router)
 
-	m.HealthHandler(ctx).SetHealthRoutes(router.Router, true)
-	m.HealthHandler(ctx).SetVersionRoutes(router.Router)
-	m.MetricsHandler().SetRoutes(router.Router)
+	m.HealthHandler(ctx).SetHealthRoutes(router, true)
+	m.HealthHandler(ctx).SetVersionRoutes(router)
+	m.MetricsHandler().SetRoutes(router)
+
+	config.NewConfigHashHandler(m, router)
 }
 
 func (m *RegistryDefault) RegisterRoutes(ctx context.Context, public *x.RouterPublic, admin *x.RouterAdmin) {
@@ -424,7 +427,13 @@ func (m *RegistryDefault) SelfServiceErrorHandler() *errorx.Handler {
 }
 
 func (m *RegistryDefault) CookieManager(ctx context.Context) sessions.StoreExact {
-	cs := sessions.NewCookieStore(m.Config(ctx).SecretsSession()...)
+	var keys [][]byte
+	for _, k := range m.Config(ctx).SecretsSession() {
+		encrypt := sha256.Sum256(k)
+		keys = append(keys, k, encrypt[:])
+	}
+
+	cs := sessions.NewCookieStore(keys...)
 	cs.Options.Secure = !m.Config(ctx).IsInsecureDevMode()
 	cs.Options.HttpOnly = true
 
@@ -586,8 +595,8 @@ func (m *RegistryDefault) SetPersister(p persistence.Persister) {
 	m.persister = p
 }
 
-func (m *RegistryDefault) Courier(ctx context.Context) *courier.Courier {
-	return courier.NewSMTP(ctx, m)
+func (m *RegistryDefault) Courier(ctx context.Context) courier.Courier {
+	return courier.NewCourier(ctx, m)
 }
 
 func (m *RegistryDefault) ContinuityManager() continuity.Manager {

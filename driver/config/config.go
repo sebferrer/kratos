@@ -69,6 +69,10 @@ const (
 	ViperKeyCourierSMTPFrom                                  = "courier.smtp.from_address"
 	ViperKeyCourierSMTPFromName                              = "courier.smtp.from_name"
 	ViperKeyCourierSMTPHeaders                               = "courier.smtp.headers"
+	ViperKeyCourierSMSRequestConfig                          = "courier.sms.request_config"
+	ViperKeyCourierSMSEnabled                                = "courier.sms.enabled"
+	ViperKeyCourierSMSFrom                                   = "courier.sms.from"
+	ViperKeyCourierMessageTTL                                = "courier.message_ttl"
 	ViperKeySecretsDefault                                   = "secrets.default"
 	ViperKeySecretsCookie                                    = "secrets.cookie"
 	ViperKeySecretsCipher                                    = "secrets.cipher"
@@ -106,7 +110,7 @@ const (
 	ViperKeyCookiePath                                       = "cookies.path"
 	ViperKeySelfServiceStrategyConfig                        = "selfservice.methods"
 	ViperKeySelfServiceBrowserDefaultReturnTo                = "selfservice." + DefaultBrowserReturnURL
-	ViperKeyURLsWhitelistedReturnToDomains                   = "selfservice.whitelisted_return_urls"
+	ViperKeyURLsAllowedReturnToDomains                       = "selfservice.allowed_return_urls"
 	ViperKeySelfServiceRegistrationEnabled                   = "selfservice.flows.registration.enabled"
 	ViperKeySelfServiceRegistrationUI                        = "selfservice.flows.registration.ui_url"
 	ViperKeySelfServiceRegistrationRequestLifespan           = "selfservice.flows.registration.lifespan"
@@ -155,10 +159,12 @@ const (
 	ViperKeyPasswordIdentifierSimilarityCheckEnabled         = "selfservice.methods.password.config.identifier_similarity_check_enabled"
 	ViperKeyIgnoreNetworkErrors                              = "selfservice.methods.password.config.ignore_network_errors"
 	ViperKeyTOTPIssuer                                       = "selfservice.methods.totp.config.issuer"
+	ViperKeyOIDCBaseRedirectURL                              = "selfservice.methods.oidc.config.base_redirect_uri"
 	ViperKeyWebAuthnRPDisplayName                            = "selfservice.methods.webauthn.config.rp.display_name"
 	ViperKeyWebAuthnRPID                                     = "selfservice.methods.webauthn.config.rp.id"
 	ViperKeyWebAuthnRPOrigin                                 = "selfservice.methods.webauthn.config.rp.origin"
 	ViperKeyWebAuthnRPIcon                                   = "selfservice.methods.webauthn.config.rp.issuer"
+	ViperKeyWebAuthnPasswordless                             = "selfservice.methods.webauthn.config.passwordless"
 	ViperKeyClientHTTPNoPrivateIPRanges                      = "clients.http.disallow_private_ip_ranges"
 	ViperKeyVersion                                          = "version"
 )
@@ -235,11 +241,15 @@ type (
 		CourierSMTPFrom() string
 		CourierSMTPFromName() string
 		CourierSMTPHeaders() map[string]string
+		CourierSMSEnabled() bool
+		CourierSMSFrom() string
+		CourierSMSRequestConfig() json.RawMessage
 		CourierTemplatesRoot() string
 		CourierTemplatesVerificationInvalid() *CourierEmailTemplate
 		CourierTemplatesVerificationValid() *CourierEmailTemplate
 		CourierTemplatesRecoveryInvalid() *CourierEmailTemplate
 		CourierTemplatesRecoveryValid() *CourierEmailTemplate
+		CourierMessageTTL() time.Duration
 	}
 )
 
@@ -497,6 +507,10 @@ func (p *Config) DefaultIdentityTraitsSchemaID() string {
 
 func (p *Config) TOTPIssuer() string {
 	return p.Source().StringF(ViperKeyTOTPIssuer, p.SelfPublicURL().Hostname())
+}
+
+func (p *Config) OIDCRedirectURIBase() *url.URL {
+	return p.Source().URIF(ViperKeyOIDCBaseRedirectURL, p.SelfPublicURL())
 }
 
 func (p *Config) IdentityTraitsSchemas() (Schemas, error) {
@@ -809,8 +823,8 @@ func (p *Config) SessionPersistentCookie() bool {
 	return p.p.Bool(ViperKeySessionPersistentCookie)
 }
 
-func (p *Config) SelfServiceBrowserWhitelistedReturnToDomains() (us []url.URL) {
-	src := p.p.Strings(ViperKeyURLsWhitelistedReturnToDomains)
+func (p *Config) SelfServiceBrowserAllowedReturnToDomains() (us []url.URL) {
+	src := p.p.Strings(ViperKeyURLsAllowedReturnToDomains)
 	for k, u := range src {
 		if len(u) == 0 {
 			continue
@@ -818,11 +832,11 @@ func (p *Config) SelfServiceBrowserWhitelistedReturnToDomains() (us []url.URL) {
 
 		parsed, err := url.ParseRequestURI(u)
 		if err != nil {
-			p.l.WithError(err).Warnf("Ignoring URL \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsWhitelistedReturnToDomains, k)
+			p.l.WithError(err).Warnf("Ignoring URL \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsAllowedReturnToDomains, k)
 			continue
 		}
 		if parsed.Host == "*" {
-			p.l.Warnf("Ignoring wildcard \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsWhitelistedReturnToDomains, k)
+			p.l.Warnf("Ignoring wildcard \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsAllowedReturnToDomains, k)
 			continue
 		}
 		eTLD, icann := publicsuffix.PublicSuffix(parsed.Host)
@@ -830,7 +844,7 @@ func (p *Config) SelfServiceBrowserWhitelistedReturnToDomains() (us []url.URL) {
 			parsed.Host[:1] == "*" &&
 			icann &&
 			parsed.Host == fmt.Sprintf("*.%s", eTLD) {
-			p.l.Warnf("Ignoring wildcard \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsWhitelistedReturnToDomains, k)
+			p.l.Warnf("Ignoring wildcard \"%s\" from configuration key \"%s.%d\".", u, ViperKeyURLsAllowedReturnToDomains, k)
 			continue
 		}
 
@@ -915,8 +929,39 @@ func (p *Config) CourierTemplatesRecoveryValid() *CourierEmailTemplate {
 	return p.CourierTemplatesHelper(ViperKeyCourierTemplatesRecoveryValidEmail)
 }
 
+func (p *Config) CourierMessageTTL() time.Duration {
+	return p.p.DurationF(ViperKeyCourierMessageTTL, time.Hour)
+}
+
 func (p *Config) CourierSMTPHeaders() map[string]string {
 	return p.p.StringMap(ViperKeyCourierSMTPHeaders)
+}
+
+func (p *Config) CourierSMSRequestConfig() json.RawMessage {
+	if !p.p.Bool(ViperKeyCourierSMSEnabled) {
+		return nil
+	}
+
+	out, err := p.p.Marshal(kjson.Parser())
+	if err != nil {
+		p.l.WithError(err).Warn("Unable to marshal self service strategy configuration.")
+		return nil
+	}
+
+	config := gjson.GetBytes(out, ViperKeyCourierSMSRequestConfig).Raw
+	if len(config) <= 0 {
+		return json.RawMessage("{}")
+	}
+
+	return json.RawMessage(config)
+}
+
+func (p *Config) CourierSMSFrom() string {
+	return p.p.StringF(ViperKeyCourierSMSFrom, "Ory Kratos")
+}
+
+func (p *Config) CourierSMSEnabled() bool {
+	return p.p.Bool(ViperKeyCourierSMSEnabled)
 }
 
 func splitUrlAndFragment(s string) (string, string) {
@@ -1129,6 +1174,10 @@ func (p *Config) PasswordPolicyConfig() *PasswordPolicy {
 	}
 }
 
+func (p *Config) WebAuthnForPasswordless() bool {
+	return p.p.BoolF(ViperKeyWebAuthnPasswordless, false)
+}
+
 func (p *Config) WebAuthnConfig() *webauthn.Config {
 	return &webauthn.Config{
 		RPDisplayName: p.p.String(ViperKeyWebAuthnRPDisplayName),
@@ -1164,7 +1213,6 @@ func (p *Config) CipherAlgorithm() string {
 		fallthrough
 	default:
 		return configValue
-
 	}
 }
 

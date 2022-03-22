@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ory/kratos/identity"
+
 	"github.com/bradleyjkemp/cupaloy/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -149,7 +151,7 @@ func TestMigrations(t *testing.T) {
 						// Prevents ordering to get in the way.
 						actual.VerifiableAddresses = nil
 						actual.RecoveryAddresses = nil
-						CompareWithFixture(t, actual, "identity", id.ID.String())
+						CompareWithFixture(t, identity.WithCredentialsInJSON(*actual), "identity", id.ID.String())
 					}
 
 					migratest.ContainsExpectedIds(t, filepath.Join("fixtures", "identity"), found)

@@ -20,7 +20,7 @@ replace (
 )
 
 require (
-	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/DataDog/datadog-go v4.0.0+incompatible // indirect
 	github.com/Masterminds/sprig/v3 v3.0.0
 	github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0
 	github.com/avast/retry-go/v3 v3.1.1
@@ -32,11 +32,12 @@ require (
 	github.com/cortesi/modd v0.0.0-20210323234521-b35eddab86cc
 	github.com/davecgh/go-spew v1.1.1
 	github.com/davidrjonas/semver-cli v0.0.0-20190116233701-ee19a9a0dda6
-	github.com/duo-labs/webauthn v0.0.0-20210727191636-9f1b88ef44cc
+	github.com/duo-labs/webauthn v0.0.0-20220212025243-7c9ee999e33e
 	github.com/fatih/color v1.13.0
-	github.com/form3tech-oss/jwt-go v3.2.2+incompatible
+	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-errors/errors v1.0.1
+	github.com/go-openapi/errors v0.20.0 // indirect
 	github.com/go-openapi/strfmt v0.20.3
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/go-swagger/go-swagger v0.26.1
@@ -49,7 +50,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v27 v27.0.1
 	github.com/google/go-github/v38 v38.1.0
-	github.com/google/go-jsonnet v0.17.0
+	github.com/google/go-jsonnet v0.18.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
@@ -67,17 +68,17 @@ require (
 	github.com/mikefarah/yq/v4 v4.19.1
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
-	github.com/ory/analytics-go/v4 v4.0.2
+	github.com/ory/analytics-go/v4 v4.0.3
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/go-acc v0.2.6
 	github.com/ory/go-convenience v0.1.0
 	github.com/ory/graceful v0.1.1
-	github.com/ory/herodot v0.9.12
-	github.com/ory/jsonschema/v3 v3.0.6
+	github.com/ory/herodot v0.9.13
+	github.com/ory/jsonschema/v3 v3.0.7
 	github.com/ory/kratos-client-go v0.6.3-alpha.1
 	github.com/ory/mail/v3 v3.0.0
 	github.com/ory/nosurf v1.2.7
-	github.com/ory/x v0.0.337
+	github.com/ory/x v0.0.358
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
 	github.com/pquerna/otp v1.3.0
