@@ -1486,12 +1486,25 @@
               "type": "string",
               "pattern": "^smtps?:\\/\\/.*"
             },
-            "from_address": {
-              "title": "SMTP Sender Address",
+            "client_cert_path": {
+              "title": "SMTP Client certificate path",
               "description": "The recipient of an email will see this as the sender address.",
               "type": "string",
-              "format": "email",
-              "default": "no-reply@ory.kratos.sh"
+              "default": ""
+            },
+            "client_key_path": {
+              "title": "SMTP Client private key path",
+              "description": "Path of the client private key, in case of certificate based client authentication to the SMTP server",
+              "type": "string",
+              "default": ""
+            },
+            "from_address": {
+              "title": "SMTP Sender Adress",
+              "description": "The recipient of an email will see this as the sender email.",
+              "type": "string",
+              "examples": [
+                "noreply@kratos.ory.sh"
+              ]
             },
             "from_name": {
               "title": "SMTP Sender Name",
