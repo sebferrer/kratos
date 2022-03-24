@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
@@ -112,14 +113,11 @@ func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
 	if handle, _, _ := r.Lookup("POST", RouteAcs); handle == nil {
 		r.POST(RouteAcs, wrappedHandleCallback)
-	} //ACS SUPPORT
+	} // ACS SUPPORT
 }
 
-// Retrieves the user's attributes from the SAML Assertion
-func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
-
-	r.ParseForm()
-
+// Get possible SAML Request IDs
+func GetPossibleRequestIDs(r *http.Request, m samlsp.Middleware) []string {
 	possibleRequestIDs := []string{}
 	if m.ServiceProvider.AllowIDPInitiated {
 		possibleRequestIDs = append(possibleRequestIDs, "")
@@ -130,20 +128,16 @@ func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
 	}
 
-	assertion, err := m.ServiceProvider.ParseResponse(r, possibleRequestIDs)
-	if err != nil {
-		m.OnError(w, r, err)
-		return nil, err
-	}
+	return possibleRequestIDs
+}
 
+// Retrieves the user's attributes from the SAML Assertion
+func (s *Strategy) GetAttributesFromAssertion(assertion *saml.Assertion) (map[string][]string, error) {
 	attributes := map[string][]string{}
 
 	for _, attributeStatement := range assertion.AttributeStatements {
 		for _, attr := range attributeStatement.Attributes {
-			claimName := attr.FriendlyName
-			if claimName == "" {
-				claimName = attr.Name
-			}
+			claimName := attr.Name
 			for _, value := range attr.Values {
 				attributes[claimName] = append(attributes[claimName], value.Value)
 			}
@@ -155,14 +149,22 @@ func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 
 // Handle /selfservice/methods/saml/acs | Receive SAML response, parse the attributes and start auth flow
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	r.ParseForm()
 
 	m, err := samlflow.GetMiddleware()
 	if err != nil {
 		s.forwardError(w, r, err)
 	}
 
+	// We get the possible SAML request IDs
+	possibleRequestIDs := GetPossibleRequestIDs(r, *m)
+	assertion, err := m.ServiceProvider.ParseResponse(r, possibleRequestIDs)
+	if err != nil {
+		s.forwardError(w, r, err)
+	}
+
 	// We get the user's attributes from the SAML Response (assertion)
-	attributes, err := s.GetAttributesFromAssertion(w, r, *m)
+	attributes, err := s.GetAttributesFromAssertion(assertion)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
@@ -237,7 +239,7 @@ func (s *Strategy) populateMethod(r *http.Request, c *container.Container, messa
 
 	// does not need sorting because there is only one field
 	c.SetCSRF(s.d.GenerateCSRFToken(r))
-	//AddSamlProviders(c, conf.Providers, message)
+	// AddSamlProviders(c, conf.Providers, message)
 
 	return nil
 }
