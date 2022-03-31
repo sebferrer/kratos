@@ -2,7 +2,12 @@ package strategy_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"encoding/xml"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
@@ -11,20 +16,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beevik/etree"
+	crewjamsaml "github.com/crewjam/saml"
+	"github.com/crewjam/saml/samlsp"
+	"github.com/crewjam/saml/xmlenc"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+	"gotest.tools/golden"
 
 	"github.com/ory/kratos/driver"
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/identity"
+	"github.com/ory/kratos/internal"
+	"github.com/ory/kratos/internal/testhelpers"
+	samlhandler "github.com/ory/kratos/selfservice/flow/saml"
+	"github.com/ory/kratos/selfservice/strategy/saml"
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml"
+	samlstrat "github.com/ory/kratos/selfservice/strategy/saml/strategy"
 	"github.com/ory/kratos/x"
 )
 
 var TimeNow = func() time.Time { return time.Now().UTC() }
 var RandReader = rand.Reader
+
+var makeRequestWithCookieJar = func(t *testing.T, destination string, fv url.Values, jar *cookiejar.Jar) (*http.Response, []byte) {
+	res, err := newClient(t, jar).PostForm(destination, fv)
+	require.NoError(t, err, destination)
+
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, res.Body.Close())
+	require.NoError(t, err)
+
+	require.Equal(t, 200, res.StatusCode, "%s: %s\n\t%s", destination, res.Request.URL.String(), body)
+
+	return res, body
+}
+
+var makeRequest = func(t *testing.T, action string, fv url.Values) (*http.Response, []byte) {
+	return makeRequestWithCookieJar(t, action, fv, nil)
+}
 
 func newReturnTs(t *testing.T, reg driver.Registry) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,19 +149,127 @@ func mustParseURL(s string) url.URL {
 	return *rv
 }
 
-var makeRequestWithCookieJar = func(t *testing.T, destination string, fv url.Values, jar *cookiejar.Jar) (*http.Response, []byte) {
-	res, err := newClient(t, jar).PostForm(destination, fv)
-	require.NoError(t, err, destination)
-
-	body, err := ioutil.ReadAll(res.Body)
-	require.NoError(t, res.Body.Close())
-	require.NoError(t, err)
-
-	require.Equal(t, 200, res.StatusCode, "%s: %s\n\t%s", destination, res.Request.URL.String(), body)
-
-	return res, body
+func makeTrackedRequest(id string, middleware samlsp.Middleware) string {
+	codec := middleware.RequestTracker.(samlsp.CookieRequestTracker).Codec
+	token, err := codec.Encode(samlsp.TrackedRequest{
+		Index:         "KCosLjAyNDY4Ojw-QEJERkhKTE5QUlRWWFpcXmBiZGZoamxucHJ0dnh6",
+		SAMLRequestID: id,
+		URI:           "/frob",
+	})
+	if err != nil {
+		panic(err)
+	}
+	return token
 }
 
-var makeRequest = func(t *testing.T, action string, fv url.Values) (*http.Response, []byte) {
-	return makeRequestWithCookieJar(t, action, fv, nil)
+func mustParseCertificate(pemStr []byte) *x509.Certificate {
+	b, _ := pem.Decode(pemStr)
+	if b == nil {
+		panic("cannot parse PEM")
+	}
+	cert, err := x509.ParseCertificate(b.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	return cert
+}
+
+func mustParsePrivateKey(pemStr []byte) crypto.PrivateKey {
+	b, _ := pem.Decode(pemStr)
+	if b == nil {
+		panic("cannot parse PEM")
+	}
+	k, err := x509.ParsePKCS1PrivateKey(b.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
+
+func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+	conf, reg := internal.NewFastRegistryWithMocks(t)
+
+	strategy := samlstrat.NewStrategy(reg)
+	errTS := testhelpers.NewErrorTestServer(t, reg)
+	routerP := x.NewRouterPublic()
+	routerA := x.NewRouterAdmin()
+	ts, _ := testhelpers.NewKratosServerWithRouters(t, reg, routerP, routerA)
+
+	attributesMap := make(map[string]string)
+	attributesMap["id"] = "mail"
+	attributesMap["firstname"] = "givenName"
+	attributesMap["lastname"] = "sn"
+	attributesMap["email"] = "mail"
+
+	// Initiates the service provider
+	viperSetProviderConfig(
+		t,
+		conf,
+		newSAMLProvider(t, ts, "samlProviderTestID", "samlProviderTestLabel"),
+		saml.Configuration{
+			ID:             "samlProviderTestID",
+			Label:          "samlProviderTestLabel",
+			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
+			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
+			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
+			AttributesMap:  attributesMap,
+			IDPInformation: idpInformation,
+		},
+	)
+
+	conf.MustSet(config.ViperKeySelfServiceRegistrationEnabled, true)
+	conf.MustSet(config.ViperKeyDefaultIdentitySchemaURL, "file://../../../strategy/oidc/stub/registration.schema.json/stub/registration.schema.json")
+	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
+		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
+
+	t.Logf("Kratos Public URL: %s", ts.URL)
+	t.Logf("Kratos Error URL: %s", errTS.URL)
+
+	// Instantiates the MiddleWare
+	newClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
+
+	middleware, err := samlhandler.GetMiddleware()
+	middleware.ServiceProvider.Key = mustParsePrivateKey(golden.Get(t, "key.pem")).(*rsa.PrivateKey)
+	middleware.ServiceProvider.Certificate = mustParseCertificate(golden.Get(t, "cert.pem"))
+	require.NoError(t, err)
+
+	return middleware, strategy, err
+}
+
+func initMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+	idpInformation := make(map[string]string)
+	idpInformation["idp_metadata_url"] = metadataURL
+
+	return initMiddleware(t, idpInformation)
+}
+
+func initMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId string,
+	idpCertifiatePath string, idpLogoutUrl string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+
+	idpInformation := make(map[string]string)
+	idpInformation["idp_sso_url"] = idpSsoUrl
+	idpInformation["idp_entity_id"] = idpEntityId
+	idpInformation["idp_certificate_path"] = idpCertifiatePath
+	idpInformation["idp_logout_url"] = idpLogoutUrl
+
+	return initMiddleware(t, idpInformation)
+}
+
+func getAndDecryptAssertion(t *testing.T, samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
+	// Load saml response test file
+	samlResponse, err := ioutil.ReadFile("./testdata/SP_SamlResponse.xml")
+
+	// Decrypt saml response assertion
+	doc := etree.NewDocument()
+	err = doc.ReadFromBytes(samlResponse)
+	require.NoError(t, err)
+	responseEl := doc.Root()
+	el := responseEl.FindElement("//EncryptedAssertion/EncryptedData")
+	plaintextAssertion, err := xmlenc.Decrypt(key, el)
+
+	assertion := &crewjamsaml.Assertion{}
+	err = xml.Unmarshal(plaintextAssertion, assertion)
+	require.NoError(t, err)
+
+	return assertion, err
 }
