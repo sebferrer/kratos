@@ -218,7 +218,7 @@ func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	)
 
 	conf.MustSet(config.ViperKeySelfServiceRegistrationEnabled, true)
-	conf.MustSet(config.ViperKeyDefaultIdentitySchemaURL, "file://../../../strategy/oidc/stub/registration.schema.json/stub/registration.schema.json")
+	conf.MustSet(config.ViperKeyDefaultIdentitySchemaURL, "file://../../../../stub/registration.schema.json")
 	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
 		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
 
@@ -257,7 +257,7 @@ func initMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId s
 
 func getAndDecryptAssertion(t *testing.T, samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
 	// Load saml response test file
-	samlResponse, err := ioutil.ReadFile("./testdata/SP_SamlResponse.xml")
+	samlResponse, err := ioutil.ReadFile(samlResponseFile)
 
 	// Decrypt saml response assertion
 	doc := etree.NewDocument()
