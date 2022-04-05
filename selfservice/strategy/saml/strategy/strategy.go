@@ -108,6 +108,10 @@ func NewStrategy(d registrationStrategyDependencies) *Strategy {
 	}
 }
 
+func (s *Strategy) D() registrationStrategyDependencies {
+	return s.d
+}
+
 // We indicate here that when the ACS endpoint receives a POST request, we call the handleCallback method to process it
 func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
@@ -171,7 +175,7 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// We get the provider information from the config file
-	provider, err := s.provider(r.Context(), r)
+	provider, err := s.Provider(r.Context())
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
@@ -198,7 +202,7 @@ func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, err erro
 }
 
 // Return the SAML Provider
-func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
+func (s *Strategy) Provider(ctx context.Context) (samlstrategy.Provider, error) {
 	c, err := s.Config(ctx)
 	if err != nil {
 		return nil, err
