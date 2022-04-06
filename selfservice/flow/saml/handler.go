@@ -67,6 +67,9 @@ type CookieSessionProvider struct {
 	Codec    samlsp.SessionCodec
 }
 
+/**
+* TODO UNIT TEST
+ */
 func NewHandler(d handlerDependencies) *Handler {
 	return &Handler{
 		d:  d,
@@ -94,15 +97,17 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 	h.d.CSRFHandler().IgnorePath(RouteSamlLoginInit)
 	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
 
-	router.GET(RouteSamlMetadata, h.submitMetadata)
+	router.GET(RouteSamlMetadata, h.serveMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
 }
 
 // Handle /selfservice/methods/saml/metadata
-func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
+func (h *Handler) serveMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	config := h.d.Config(r.Context())
 	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
+		if err := h.instantiateMiddleware(*config); err != nil {
+			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+		}
 	}
 
 	samlMiddleware.ServeMetadata(w, r)
@@ -124,7 +129,8 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 	// Middleware is a singleton so we have to verify that it exist
 	if samlMiddleware == nil {
-		if err := h.instantiateMiddleware(r); err != nil {
+		config := h.d.Config(r.Context())
+		if err := h.instantiateMiddleware(*config); err != nil {
 			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
 		}
 	}
@@ -141,10 +147,11 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 }
 
-func (h *Handler) instantiateMiddleware(r *http.Request) error {
-
+/**
+* TODO UNIT TEST
+ */
+func (h *Handler) instantiateMiddleware(config config.Config) error {
 	// Create a SAMLProvider object from the config file
-	config := h.d.Config(r.Context())
 	var c samlstrategy.ConfigurationCollection
 	conf := config.SelfServiceStrategy("saml").Config
 	if err := jsonx.
@@ -168,16 +175,31 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	// We check if the metadata file is provided
 	if c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"] != "" {
 
+		metadataURL := c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"]
 		// The metadata file is provided
-		idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"])
-		if err != nil {
-			return err
-		}
+		if strings.HasPrefix(metadataURL, "file://") {
+			metadataURL = strings.Replace(metadataURL, "file://", "", 1)
 
-		// Parse the content of metadata file into a Golang struct
-		idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
-		if err != nil {
-			return err
+			metadataPlainText, err := ioutil.ReadFile(metadataURL)
+			if err != nil {
+				return err
+			}
+
+			idpMetadata, err = samlsp.ParseMetadata([]byte(metadataPlainText))
+			if err != nil {
+				return err
+			}
+
+		} else {
+			idpMetadataURL, err := url.Parse(metadataURL)
+			if err != nil {
+				return err
+			}
+			// Parse the content of metadata file into a Golang struct
+			idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
+			if err != nil {
+				return err
+			}
 		}
 
 	} else {
@@ -280,6 +302,9 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 	return nil
 }
 
+/**
+* TODO UNIT TEST
+ */
 func GetMiddleware() (*samlsp.Middleware, error) {
 	if samlMiddleware == nil {
 		return nil, errors.Errorf("The MiddleWare for SAML is null (Probably due to a backward step)")
@@ -287,6 +312,9 @@ func GetMiddleware() (*samlsp.Middleware, error) {
 	return samlMiddleware, nil
 }
 
+/**
+* TODO UNIT TEST
+ */
 func mustParseCertificate(pemStr []byte) *x509.Certificate {
 	b, _ := pem.Decode(pemStr)
 	if b == nil {
