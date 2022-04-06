@@ -92,6 +92,22 @@ type registrationStrategyDependencies interface {
 // This file is like an helper for login and register flow
 //###############
 
+func (s *Strategy) ID() identity.CredentialsType {
+	return identity.CredentialsTypeSAML
+}
+
+func (s *Strategy) D() registrationStrategyDependencies {
+	return s.d
+}
+
+func (s *Strategy) NodeGroup() node.Group {
+	return node.SAMLGroup
+}
+
+func uid(provider, subject string) string {
+	return fmt.Sprintf("%s:%s", provider, subject)
+}
+
 type Strategy struct {
 	d  registrationStrategyDependencies
 	f  *fetcher.Fetcher
@@ -106,10 +122,6 @@ func NewStrategy(d registrationStrategyDependencies) *Strategy {
 		v:  validator.New(),
 		hd: decoderx.NewHTTP(),
 	}
-}
-
-func (s *Strategy) D() registrationStrategyDependencies {
-	return s.d
 }
 
 // We indicate here that when the ACS endpoint receives a POST request, we call the handleCallback method to process it
@@ -216,10 +228,6 @@ func (s *Strategy) Provider(ctx context.Context) (samlstrategy.Provider, error) 
 	return provider, nil
 }
 
-func (s *Strategy) NodeGroup() node.Group {
-	return node.SAMLGroup
-}
-
 // Translate YAML Config file into a SAML Provider struct
 func (s *Strategy) Config(ctx context.Context) (*samlstrategy.ConfigurationCollection, error) {
 	var c samlstrategy.ConfigurationCollection
@@ -246,10 +254,6 @@ func (s *Strategy) populateMethod(r *http.Request, c *container.Container, messa
 	// AddSamlProviders(c, conf.Providers, message)
 
 	return nil
-}
-
-func (s *Strategy) ID() identity.CredentialsType {
-	return identity.CredentialsTypeSAML
 }
 
 func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Flow, provider string, traits []byte, err error) error {
@@ -283,10 +287,6 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 	}
 
 	return err
-}
-
-func uid(provider, subject string) string {
-	return fmt.Sprintf("%s:%s", provider, subject)
 }
 
 func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {

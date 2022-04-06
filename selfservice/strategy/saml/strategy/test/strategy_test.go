@@ -188,11 +188,8 @@ func TestGetRegistrationIdentity(t *testing.T) {
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	provider, _ := strategy.Provider(context.Background())
-
 	assertion, _ := getAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
-
 	attributes, _ := strategy.GetAttributesFromAssertion(assertion)
-
 	claims, _ := provider.Claims(context.Background(), strategy.D().Config(context.Background()), attributes)
 
 	i, err := strategy.GetRegistrationIdentity(nil, context.Background(), provider, claims, false)
