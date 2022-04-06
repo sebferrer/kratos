@@ -24,6 +24,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.0.0
 	github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0
 	github.com/avast/retry-go/v3 v3.1.1
+	github.com/beevik/etree v1.1.0
 	github.com/bradleyjkemp/cupaloy/v2 v2.6.0
 	github.com/bwmarrin/discordgo v0.23.0
 	github.com/bxcodec/faker/v3 v3.3.1
@@ -59,7 +60,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/imdario/mergo v0.3.12
 	github.com/inhies/go-bytesize v0.0.0-20210819104631-275770b98743
-	github.com/instana/testify v1.6.2-0.20200721153833-94b1851f4d65
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/knadh/koanf v1.4.0
