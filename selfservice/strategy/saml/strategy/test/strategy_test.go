@@ -9,6 +9,7 @@ import (
 
 	"github.com/ory/kratos/identity"
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml/strategy"
+	helpertest   "github.com/ory/kratos/selfservice/flow/saml/helpertest"
 	"github.com/stretchr/testify/require"
 
 	"gotest.tools/assert"
@@ -21,8 +22,8 @@ func TestInitMiddleWareWithMetadata(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, _, err := initMiddlewareWithMetadata(t,
-		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
+	middleware, _, err := helpertest.InitMiddlewareWithMetadata(t,
+		"file://testdata/idp_saml_metadata.xml")
 
 	require.NoError(t, err)
 	assert.Check(t, middleware != nil)
@@ -34,7 +35,7 @@ func TestInitMiddleWareWithoutMetadata(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, _, err := initMiddlewareWithoutMetadata(t,
+	middleware, _, err := helpertest.InitMiddlewareWithoutMetadata(t,
 		"https://samltest.id/idp/profile/SAML2/Redirect/SSO",
 		"https://samltest.id/saml/idp",
 		"./testdata/samlkratos.crt",
@@ -50,10 +51,10 @@ func TestGetAndDecryptAssertion(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, _, _ := initMiddlewareWithMetadata(t,
+	middleware, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
-	assertion, err := getAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, err := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
 
 	require.NoError(t, err)
 	assert.Check(t, assertion != nil)
@@ -64,10 +65,10 @@ func TestGetAttributesFromAssertion(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, strategy, _ := initMiddlewareWithMetadata(t,
+	middleware, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
-	assertion, _ := getAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, _ := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
 
 	mapAttributes, err := strategy.GetAttributesFromAssertion(assertion)
 
@@ -92,7 +93,7 @@ func TestCreateAuthRequest(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, _, _ := initMiddlewareWithMetadata(t,
+	middleware, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	authReq, err := middleware.ServiceProvider.MakeAuthenticationRequest("https://samltest.id/idp/profile/SAML2/Redirect/SSO", "saml.HTTPPostBinding", "saml.HTTPPostBinding")
@@ -114,7 +115,7 @@ func TestProvider(t *testing.T) {
 		t.Skip()
 	}
 
-	_, strategy, _ := initMiddlewareWithMetadata(t,
+	_, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	provider, err := strategy.Provider(context.Background())
@@ -129,7 +130,7 @@ func TestConfig(t *testing.T) {
 		t.Skip()
 	}
 
-	_, strategy, _ := initMiddlewareWithMetadata(t,
+	_, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	config, err := strategy.Config(context.Background())
@@ -145,7 +146,7 @@ func TestID(t *testing.T) {
 		t.Skip()
 	}
 
-	_, strategy, _ := initMiddlewareWithMetadata(t,
+	_, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	id := strategy.ID()
@@ -153,7 +154,7 @@ func TestID(t *testing.T) {
 }
 
 func TestCountActiveCredentials(t *testing.T) {
-	_, strategy, _ := initMiddlewareWithMetadata(t,
+	_, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	mapCredentials := make(map[identity.CredentialsType]identity.Credentials)
@@ -184,11 +185,11 @@ func TestGetRegistrationIdentity(t *testing.T) {
 		t.Skip()
 	}
 
-	middleware, strategy, _ := initMiddlewareWithMetadata(t,
+	middleware, strategy, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"https://raw.githubusercontent.com/crewjam/saml/d4ed82f19df6a5201af70c25608d1999313ae3d0/testdata/SP_IDPMetadata")
 
 	provider, _ := strategy.Provider(context.Background())
-	assertion, _ := getAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, _ := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
 	attributes, _ := strategy.GetAttributesFromAssertion(assertion)
 	claims, _ := provider.Claims(context.Background(), strategy.D().Config(context.Background()), attributes)
 

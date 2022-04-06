@@ -1,4 +1,4 @@
-package strategy_test
+package helpertest
 
 import (
 	"context"
@@ -186,11 +186,11 @@ func mustParsePrivateKey(pemStr []byte) crypto.PrivateKey {
 	return k
 }
 
-func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
 	conf, reg := internal.NewFastRegistryWithMocks(t)
 
 	strategy := samlstrat.NewStrategy(reg)
-	errTS := testhelpers.NewErrorTestServer(t, reg)
+	// errTS := testhelpers.NewErrorTestServer(t, reg)
 	routerP := x.NewRouterPublic()
 	routerA := x.NewRouterAdmin()
 	ts, _ := testhelpers.NewKratosServerWithRouters(t, reg, routerP, routerA)
@@ -209,9 +209,9 @@ func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 		saml.Configuration{
 			ID:             "samlProviderTestID",
 			Label:          "samlProviderTestLabel",
-			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
-			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
-			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
+			PublicCertPath: "file://testdata/myservice.cert",
+			PrivateKeyPath: "file://testdata/myservice.key",
+			Mapper:         "file://testdata/saml.jsonnet",
 			AttributesMap:  attributesMap,
 			IDPInformation: idpInformation,
 		},
@@ -222,8 +222,8 @@ func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
 		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
 
-	t.Logf("Kratos Public URL: %s", ts.URL)
-	t.Logf("Kratos Error URL: %s", errTS.URL)
+	// t.Logf("Kratos Public URL: %s", ts.URL)
+	// t.Logf("Kratos Error URL: %s", errTS.URL)
 
 	// Instantiates the MiddleWare
 	newClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
@@ -236,14 +236,14 @@ func initMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	return middleware, strategy, err
 }
 
-func initMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+func InitMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
 	idpInformation := make(map[string]string)
 	idpInformation["idp_metadata_url"] = metadataURL
 
-	return initMiddleware(t, idpInformation)
+	return InitMiddleware(t, idpInformation)
 }
 
-func initMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId string,
+func InitMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId string,
 	idpCertifiatePath string, idpLogoutUrl string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
 
 	idpInformation := make(map[string]string)
@@ -252,10 +252,10 @@ func initMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId s
 	idpInformation["idp_certificate_path"] = idpCertifiatePath
 	idpInformation["idp_logout_url"] = idpLogoutUrl
 
-	return initMiddleware(t, idpInformation)
+	return InitMiddleware(t, idpInformation)
 }
 
-func getAndDecryptAssertion(t *testing.T, samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
+func GetAndDecryptAssertion(t *testing.T, samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
 	// Load saml response test file
 	samlResponse, err := ioutil.ReadFile(samlResponseFile)
 
