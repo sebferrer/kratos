@@ -18,7 +18,7 @@ func TestInitMiddleWareWithMetadata(t *testing.T) {
 
 	samlhandler.DestroyMiddlewareIfExists();
 
-	middleWare, _, err := helpertest.InitMiddlewareWithMetadata(t,
+	middleWare, _, _, err := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
 
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestInitMiddleWareWithoutMetadata(t *testing.T) {
 
 	samlhandler.DestroyMiddlewareIfExists();
 
-	middleWare, _, err := helpertest.InitMiddlewareWithoutMetadata(t,
+	middleWare, _, _, err := helpertest.InitMiddlewareWithoutMetadata(t,
 		"https://samltest.id/idp/profile/SAML2/Redirect/SSO",
 		"https://samltest.id/saml/idp",
 		"file://testdata/samlkratos.crt",

@@ -183,7 +183,7 @@ func mustParsePrivateKey(pemStr []byte) crypto.PrivateKey {
 	return k
 }
 
-func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Middleware, *samlstrat.Strategy, *httptest.Server, error) {
 	conf, reg := internal.NewFastRegistryWithMocks(t)
 
 	strategy := samlstrat.NewStrategy(reg)
@@ -230,10 +230,10 @@ func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	middleware.ServiceProvider.Certificate = mustParseCertificate(golden.Get(t, "cert.pem"))
 	require.NoError(t, err)
 
-	return middleware, strategy, err
+	return middleware, strategy, ts, err
 }
 
-func InitMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+func InitMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middleware, *samlstrat.Strategy, *httptest.Server, error) {
 	idpInformation := make(map[string]string)
 	idpInformation["idp_metadata_url"] = metadataURL
 
@@ -241,7 +241,7 @@ func InitMiddlewareWithMetadata(t *testing.T, metadataURL string) (*samlsp.Middl
 }
 
 func InitMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId string,
-	idpCertifiatePath string, idpLogoutUrl string) (*samlsp.Middleware, *samlstrat.Strategy, error) {
+	idpCertifiatePath string, idpLogoutUrl string) (*samlsp.Middleware, *samlstrat.Strategy, *httptest.Server, error) {
 
 	idpInformation := make(map[string]string)
 	idpInformation["idp_sso_url"] = idpSsoUrl
