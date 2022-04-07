@@ -42,7 +42,7 @@ var TimeNow = func() time.Time { return time.Now().UTC() }
 var RandReader = rand.Reader
 
 var makeRequestWithCookieJar = func(t *testing.T, destination string, fv url.Values, jar *cookiejar.Jar) (*http.Response, []byte) {
-	res, err := newClient(t, jar).PostForm(destination, fv)
+	res, err := NewClient(t, jar).PostForm(destination, fv)
 	require.NoError(t, err, destination)
 
 	body, err := ioutil.ReadAll(res.Body)
@@ -88,7 +88,7 @@ func newUI(t *testing.T, reg driver.Registry) *httptest.Server {
 	return ts
 }
 
-func newSAMLProvider(
+func NewSAMLProvider(
 	t *testing.T,
 	kratos *httptest.Server,
 	id, label string,
@@ -105,12 +105,12 @@ func newSAMLProvider(
 	}
 }
 
-func viperSetProviderConfig(t *testing.T, conf *config.Config, SAMLProvider ...samlstrategy.Configuration) {
+func ViperSetProviderConfig(t *testing.T, conf *config.Config, SAMLProvider ...samlstrategy.Configuration) {
 	conf.MustSet(config.ViperKeySelfServiceStrategyConfig+"."+string(identity.CredentialsTypeSAML)+".config", &samlstrategy.ConfigurationCollection{SAMLProviders: SAMLProvider})
 	conf.MustSet(config.ViperKeySelfServiceStrategyConfig+"."+string(identity.CredentialsTypeSAML)+".enabled", true)
 }
 
-func newClient(t *testing.T, jar *cookiejar.Jar) *http.Client {
+func NewClient(t *testing.T, jar *cookiejar.Jar) *http.Client {
 	if jar == nil {
 		j, err := cookiejar.New(nil)
 		jar = j
@@ -119,9 +119,6 @@ func newClient(t *testing.T, jar *cookiejar.Jar) *http.Client {
 	return &http.Client{
 		Jar: jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			//if debugRedirects {
-			//	t.Logf("Redirect: %s", req.URL.String())
-			//}
 			if len(via) >= 20 {
 				for k, v := range via {
 					t.Logf("Failed with redirect (%d): %s", k, v.URL.String())
@@ -190,7 +187,7 @@ func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	conf, reg := internal.NewFastRegistryWithMocks(t)
 
 	strategy := samlstrat.NewStrategy(reg)
-	// errTS := testhelpers.NewErrorTestServer(t, reg)
+	errTS := testhelpers.NewErrorTestServer(t, reg)
 	routerP := x.NewRouterPublic()
 	routerA := x.NewRouterAdmin()
 	ts, _ := testhelpers.NewKratosServerWithRouters(t, reg, routerP, routerA)
@@ -202,10 +199,10 @@ func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	attributesMap["email"] = "mail"
 
 	// Initiates the service provider
-	viperSetProviderConfig(
+	ViperSetProviderConfig(
 		t,
 		conf,
-		newSAMLProvider(t, ts, "samlProviderTestID", "samlProviderTestLabel"),
+		NewSAMLProvider(t, ts, "samlProviderTestID", "samlProviderTestLabel"),
 		saml.Configuration{
 			ID:             "samlProviderTestID",
 			Label:          "samlProviderTestLabel",
@@ -222,11 +219,11 @@ func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
 		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
 
-	// t.Logf("Kratos Public URL: %s", ts.URL)
-	// t.Logf("Kratos Error URL: %s", errTS.URL)
+	t.Logf("Kratos Public URL: %s", ts.URL)
+	t.Logf("Kratos Error URL: %s", errTS.URL)
 
 	// Instantiates the MiddleWare
-	newClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
+	NewClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
 
 	middleware, err := samlhandler.GetMiddleware()
 	middleware.ServiceProvider.Key = mustParsePrivateKey(golden.Get(t, "key.pem")).(*rsa.PrivateKey)

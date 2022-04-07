@@ -67,9 +67,6 @@ type CookieSessionProvider struct {
 	Codec    samlsp.SessionCodec
 }
 
-/**
-* TODO UNIT TEST
- */
 func NewHandler(d handlerDependencies) *Handler {
 	return &Handler{
 		d:  d,
@@ -147,9 +144,12 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 }
 
-/**
-* TODO UNIT TEST
- */
+func DestroyMiddlewareIfExists() {
+	if(samlMiddleware != nil) {
+		samlMiddleware = nil;
+	}
+}
+
 func (h *Handler) instantiateMiddleware(config config.Config) error {
 	// Create a SAMLProvider object from the config file
 	var c samlstrategy.ConfigurationCollection
@@ -230,7 +230,10 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		}
 
 		// We parse it into a x509.Certificate object
-		IDPCertificate := mustParseCertificate(certificate)
+		IDPCertificate,err := MustParseCertificate(certificate)
+		if err != nil {
+			return err
+		}
 
 		// Because the metadata file is not provided, we need to simulate an IDP to create artificial metadata from the data entered in the conf file
 		tempIDP := samlidp.IdentityProvider{
@@ -302,9 +305,6 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 	return nil
 }
 
-/**
-* TODO UNIT TEST
- */
 func GetMiddleware() (*samlsp.Middleware, error) {
 	if samlMiddleware == nil {
 		return nil, errors.Errorf("The MiddleWare for SAML is null (Probably due to a backward step)")
@@ -312,17 +312,14 @@ func GetMiddleware() (*samlsp.Middleware, error) {
 	return samlMiddleware, nil
 }
 
-/**
-* TODO UNIT TEST
- */
-func mustParseCertificate(pemStr []byte) *x509.Certificate {
+func MustParseCertificate(pemStr []byte) (*x509.Certificate,error) {
 	b, _ := pem.Decode(pemStr)
 	if b == nil {
-		panic("cannot parse PEM")
+		return nil,errors.Errorf("Cannot find the next PEM formatted block")
 	}
 	cert, err := x509.ParseCertificate(b.Bytes)
 	if err != nil {
-		panic(err)
+		return nil,err
 	}
-	return cert
+	return cert,nil
 }
