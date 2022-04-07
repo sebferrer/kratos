@@ -8,13 +8,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ory/kratos/driver/config"
-	"github.com/ory/kratos/identity"
-	"github.com/ory/kratos/internal"
-	"github.com/ory/kratos/internal/testhelpers"
-	"github.com/ory/kratos/selfservice/strategy/saml"
+	samlhandler "github.com/ory/kratos/selfservice/flow/saml"
+	helpertest "github.com/ory/kratos/selfservice/flow/saml/helpertest"
+	samltesthelpers "github.com/ory/kratos/selfservice/flow/saml/helpertest"
 
-	"github.com/ory/kratos/x"
+	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 	is "gotest.tools/assert/cmp"
 )
@@ -68,109 +66,33 @@ type Metadata struct {
 }
 
 func TestXmlMetadataExist(t *testing.T) {
-
 	if testing.Short() {
 		t.Skip()
 	}
 
-	var (
-		conf, reg = internal.NewFastRegistryWithMocks(t)
-	)
+	samlhandler.DestroyMiddlewareIfExists();
 
-	errTS := testhelpers.NewErrorTestServer(t, reg)
-	routerP := x.NewRouterPublic()
-	routerA := x.NewRouterAdmin()
-	ts, _ := testhelpers.NewKratosServerWithRouters(t, reg, routerP, routerA)
-
-	var attributesMap = make(map[string]string)
-	attributesMap["id"] = "mail"
-	attributesMap["firstname"] = "givenName"
-	attributesMap["lastname"] = "sn"
-	attributesMap["email"] = "mail"
-
-	var IDPInformation = make(map[string]string)
-	IDPInformation["idp_metadata_url"] = "https://samltest.id/saml/idp"
-
-	viperSetProviderConfig(
-		t,
-		conf,
-		newSAMLProvider(t, ts, "samlProviderTestID", "samlProviderTestLabel"),
-		saml.Configuration{
-			ID:             "samlProviderTestID",
-			Label:          "samlProviderTestLabel",
-			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
-			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
-			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
-			AttributesMap:  attributesMap,
-			IDPInformation: IDPInformation,
-		},
-	)
-
-	conf.MustSet(config.ViperKeySelfServiceRegistrationEnabled, true)
-	conf.MustSet(config.ViperKeyDefaultIdentitySchemaURL, "file://../../../strategy/oidc/stub/registration.schema.json/stub/registration.schema.json")
-	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
-		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
-
-	t.Logf("Kratos Public URL: %s", ts.URL)
-	t.Logf("Kratos Error URL: %s", errTS.URL)
-
-	res, _ := newClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
+	_, _, ts, err := helpertest.InitMiddlewareWithMetadata(t,
+		"file://testdata/idp_saml_metadata.xml")
+	assert.NilError(t, err)
+	res, _ := samltesthelpers.NewClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
 
 	assert.Check(t, is.Equal(http.StatusOK, res.StatusCode))
 	assert.Check(t, is.Equal("application/samlmetadata+xml",
 		res.Header.Get("Content-type")))
-
 }
 
 func TestXmlMetadataValues(t *testing.T) {
-
 	if testing.Short() {
 		t.Skip()
 	}
 
-	var (
-		conf, reg = internal.NewFastRegistryWithMocks(t)
-	)
+	samlhandler.DestroyMiddlewareIfExists();
 
-	errTS := testhelpers.NewErrorTestServer(t, reg)
-	routerP := x.NewRouterPublic()
-	routerA := x.NewRouterAdmin()
-	ts, _ := testhelpers.NewKratosServerWithRouters(t, reg, routerP, routerA)
-
-	var attributesMap = make(map[string]string)
-	attributesMap["id"] = "mail"
-	attributesMap["firstname"] = "givenName"
-	attributesMap["lastname"] = "sn"
-	attributesMap["email"] = "mail"
-	var IDPInformation = make(map[string]string)
-	IDPInformation["idp_metadata_url"] = "https://samltest.id/saml/idp"
-
-	viperSetProviderConfig(
-		t,
-		conf,
-		newSAMLProvider(t, ts, "samlProviderTestID", "samlProviderTestLabel"),
-		saml.Configuration{
-			ID:             "samlProviderTestID",
-			Label:          "samlProviderTestLabel",
-			PublicCertPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.cert",
-			PrivateKeyPath: "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/myservice.key",
-			Mapper:         "file:///home/debian/Code/kratos/contrib/quickstart/kratos/email-password/saml.jsonnet",
-			AttributesMap:  attributesMap,
-			IDPInformation: IDPInformation,
-		},
-	)
-
-	conf.MustSet(config.ViperKeySelfServiceRegistrationEnabled, true)
-	conf.MustSet(config.ViperKeyDefaultIdentitySchemaURL, "file://../../../strategy/oidc/stub/registration.schema.json/stub/registration.schema.json")
-	conf.MustSet(config.HookStrategyKey(config.ViperKeySelfServiceRegistrationAfter,
-		identity.CredentialsTypeSAML.String()), []config.SelfServiceHook{{Name: "session"}})
-
-	t.Logf("Kratos Public URL: %s", ts.URL)
-	t.Logf("Kratos Error URL: %s", errTS.URL)
-
-	res, _ := newClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
-
-	b, _ := io.ReadAll(res.Body)
+	_, _, ts, err := helpertest.InitMiddlewareWithMetadata(t,
+		"file://testdata/idp_saml_metadata.xml")
+	res, _ := samltesthelpers.NewClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
+	body, _ := io.ReadAll(res.Body)
 
 	assert.Check(t, is.Equal(http.StatusOK, res.StatusCode))
 	assert.Check(t, is.Equal("application/samlmetadata+xml",
@@ -179,22 +101,26 @@ func TestXmlMetadataValues(t *testing.T) {
 	expectedMetadata, err := ioutil.ReadFile("./testdata/expected_metadata.xml")
 	assert.NilError(t, err)
 
-	//The string is parse to a struct
+	// The string is parse to a struct
 	var expectedStructMetadata Metadata
-	xml.Unmarshal(expectedMetadata, &expectedStructMetadata)
-	var obtainedStructureMetadata Metadata
-	xml.Unmarshal(b, &obtainedStructureMetadata)
+	err = xml.Unmarshal(expectedMetadata, &expectedStructMetadata)
+	require.NoError(t, err)
 
-	//We delete data that is likely to change naturally
+	var obtainedStructureMetadata Metadata
+	err = xml.Unmarshal(body, &obtainedStructureMetadata)
+	require.NoError(t, err)
+
+	// We delete data that is likely to change naturally
 	expectedStructMetadata.SPSSODescriptor.AssertionConsumerService[0].Location = ""
 	expectedStructMetadata.SPSSODescriptor.AssertionConsumerService[1].Location = ""
 	obtainedStructureMetadata.SPSSODescriptor.AssertionConsumerService[0].Location = ""
 	obtainedStructureMetadata.SPSSODescriptor.AssertionConsumerService[1].Location = ""
 	expectedStructMetadata.ValidUntil = ""
 	expectedStructMetadata.SPSSODescriptor.ValidUntil = ""
-	expectedStructMetadata.ValidUntil = ""
+	obtainedStructureMetadata.ValidUntil = ""
 	obtainedStructureMetadata.SPSSODescriptor.ValidUntil = ""
+	expectedStructMetadata.EntityID = ""
+	obtainedStructureMetadata.EntityID = ""
 
-	assert.Check(t, reflect.DeepEqual(expectedStructMetadata, expectedStructMetadata))
-
+	assert.Check(t, reflect.DeepEqual(expectedStructMetadata, obtainedStructureMetadata))
 }
