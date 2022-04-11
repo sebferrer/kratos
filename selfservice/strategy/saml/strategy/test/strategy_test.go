@@ -9,8 +9,8 @@ import (
 
 	"github.com/ory/kratos/identity"
 	samlhandler "github.com/ory/kratos/selfservice/flow/saml"
+	helpertest "github.com/ory/kratos/selfservice/flow/saml/helpertest"
 	samlstrategy "github.com/ory/kratos/selfservice/strategy/saml/strategy"
-	helpertest   "github.com/ory/kratos/selfservice/flow/saml/helpertest"
 	"github.com/stretchr/testify/require"
 
 	"gotest.tools/assert"
@@ -23,7 +23,7 @@ func TestGetAndDecryptAssertion(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	middleware, _, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -39,7 +39,7 @@ func TestGetAttributesFromAssertion(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	middleware, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -69,7 +69,7 @@ func TestCreateAuthRequest(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	middleware, _, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -93,7 +93,7 @@ func TestProvider(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -110,7 +110,7 @@ func TestConfig(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -128,7 +128,7 @@ func TestID(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -142,7 +142,7 @@ func TestCountActiveCredentials(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -175,7 +175,7 @@ func TestGetRegistrationIdentity(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	middleware, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")

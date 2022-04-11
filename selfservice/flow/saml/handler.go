@@ -145,8 +145,8 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 }
 
 func DestroyMiddlewareIfExists() {
-	if(samlMiddleware != nil) {
-		samlMiddleware = nil;
+	if samlMiddleware != nil {
+		samlMiddleware = nil
 	}
 }
 
@@ -230,7 +230,7 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		}
 
 		// We parse it into a x509.Certificate object
-		IDPCertificate,err := MustParseCertificate(certificate)
+		IDPCertificate, err := MustParseCertificate(certificate)
 		if err != nil {
 			return err
 		}
@@ -312,14 +312,14 @@ func GetMiddleware() (*samlsp.Middleware, error) {
 	return samlMiddleware, nil
 }
 
-func MustParseCertificate(pemStr []byte) (*x509.Certificate,error) {
+func MustParseCertificate(pemStr []byte) (*x509.Certificate, error) {
 	b, _ := pem.Decode(pemStr)
 	if b == nil {
-		return nil,errors.Errorf("Cannot find the next PEM formatted block")
+		return nil, errors.Errorf("Cannot find the next PEM formatted block")
 	}
 	cert, err := x509.ParseCertificate(b.Bytes)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	return cert,nil
+	return cert, nil
 }

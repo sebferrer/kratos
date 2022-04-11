@@ -70,7 +70,7 @@ func TestXmlMetadataExist(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, _, ts, err := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
@@ -87,7 +87,7 @@ func TestXmlMetadataValues(t *testing.T) {
 		t.Skip()
 	}
 
-	samlhandler.DestroyMiddlewareIfExists();
+	samlhandler.DestroyMiddlewareIfExists()
 
 	_, _, ts, err := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
