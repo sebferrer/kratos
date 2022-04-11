@@ -94,15 +94,17 @@ func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
 	h.d.CSRFHandler().IgnorePath(RouteSamlLoginInit)
 	h.d.CSRFHandler().IgnorePath(RouteSamlAcs)
 
-	router.GET(RouteSamlMetadata, h.submitMetadata)
+	router.GET(RouteSamlMetadata, h.serveMetadata)
 	router.GET(RouteSamlLoginInit, h.loginWithIdp)
 }
 
 // Handle /selfservice/methods/saml/metadata
-func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
+func (h *Handler) serveMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	config := h.d.Config(r.Context())
 	if samlMiddleware == nil {
-		h.instantiateMiddleware(r)
+		if err := h.instantiateMiddleware(*config); err != nil {
+			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+		}
 	}
 
 	samlMiddleware.ServeMetadata(w, r)
@@ -114,17 +116,6 @@ func (h *Handler) submitMetadata(w http.ResponseWriter, r *http.Request, ps http
 //
 // If you already have a session, it will redirect you to the main page.
 //
-// You MUST NOT use this endpoint in client-side (Single Page Apps, ReactJS, AngularJS) nor server-side (Java Server
-// Pages, NodeJS, PHP, Golang, ...) browser applications. Using this endpoint in these applications will make
-// you vulnerable to a variety of CSRF attacks.
-//
-// In the case of an error, the `error.id` of the JSON response body can be one of:
-//
-// - `security_csrf_violation`: Unable to fetch the flow because a CSRF violation occurred.
-//
-//
-// More information can be found at [Ory Kratos SAML Documentation](https://www.ory.sh/docs/next/kratos/self-service/flows/user-login-user-registration).
-//
 //     Schemes: http, https
 //
 //     Responses:
@@ -135,32 +126,32 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 
 	// Middleware is a singleton so we have to verify that it exist
 	if samlMiddleware == nil {
-		if err := h.instantiateMiddleware(r); err != nil {
+		config := h.d.Config(r.Context())
+		if err := h.instantiateMiddleware(*config); err != nil {
 			h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
 		}
 	}
 
 	conf := h.d.Config(r.Context())
 
-	// We check if the user already have an active session.
-	if _, err := h.d.SessionManager().FetchFromRequest(r.Context(), r); err != nil {
-		if e := new(session.ErrNoActiveSessionFound); errors.As(err, &e) {
-			// No session exists yet
-			samlMiddleware.HandleStartAuthFlow(w, r)
-		} else {
-			// A session already exist, we redirect to the main page
-			http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
-		}
+	// Checks if the user already have an active session
+	if e := new(session.ErrNoActiveSessionFound); errors.As(e, &e) {
+		// No session exists yet, we start the auth flow and create the session
+		samlMiddleware.HandleStartAuthFlow(w, r)
 	} else {
-		h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
-
+		// A session already exist, we redirect to the main page
+		http.Redirect(w, r, conf.SelfServiceBrowserDefaultReturnTo().Path, http.StatusTemporaryRedirect)
 	}
 }
 
-func (h *Handler) instantiateMiddleware(r *http.Request) error {
+func DestroyMiddlewareIfExists() {
+	if samlMiddleware != nil {
+		samlMiddleware = nil
+	}
+}
 
-	//Create a SAMLProvider object from the config file
-	config := h.d.Config(r.Context())
+func (h *Handler) instantiateMiddleware(config config.Config) error {
+	// Create a SAMLProvider object from the config file
 	var c samlstrategy.ConfigurationCollection
 	conf := config.SelfServiceStrategy("saml").Config
 	if err := jsonx.
@@ -169,7 +160,7 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		return errors.Wrapf(err, "Unable to decode config %v", string(conf))
 	}
 
-	//Key pair to encrypt and sign SAML requests
+	// Key pair to encrypt and sign SAML requests
 	keyPair, err := tls.LoadX509KeyPair(strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PublicCertPath, "file://", "", 1), strings.Replace(c.SAMLProviders[len(c.SAMLProviders)-1].PrivateKeyPath, "file://", "", 1))
 	if err != nil {
 		return err
@@ -181,26 +172,41 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 
 	var idpMetadata *samlidp.EntityDescriptor
 
-	//We check if the metadata file is provided
+	// We check if the metadata file is provided
 	if c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"] != "" {
 
-		//The metadata file is provided
-		idpMetadataURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"])
-		if err != nil {
-			return err
-		}
+		metadataURL := c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_metadata_url"]
+		// The metadata file is provided
+		if strings.HasPrefix(metadataURL, "file://") {
+			metadataURL = strings.Replace(metadataURL, "file://", "", 1)
 
-		//Parse the content of metadata file into a Golang struct
-		idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
-		if err != nil {
-			return err
+			metadataPlainText, err := ioutil.ReadFile(metadataURL)
+			if err != nil {
+				return err
+			}
+
+			idpMetadata, err = samlsp.ParseMetadata([]byte(metadataPlainText))
+			if err != nil {
+				return err
+			}
+
+		} else {
+			idpMetadataURL, err := url.Parse(metadataURL)
+			if err != nil {
+				return err
+			}
+			// Parse the content of metadata file into a Golang struct
+			idpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMetadataURL)
+			if err != nil {
+				return err
+			}
 		}
 
 	} else {
 
-		//The metadata file is not provided
-		// So were are creating fake IDP metadata based on what is provided by the user on the config file
-		entityIDURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_entity_id"]) //A modifier
+		// The metadata file is not provided
+		// So were are creating a minimalist IDP metadata based on what is provided by the user on the config file
+		entityIDURL, err := url.Parse(c.SAMLProviders[len(c.SAMLProviders)-1].IDPInformation["idp_entity_id"])
 		if err != nil {
 			return err
 		}
@@ -224,10 +230,13 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 		}
 
 		// We parse it into a x509.Certificate object
-		IDPCertificate := mustParseCertificate(certificate)
+		IDPCertificate, err := MustParseCertificate(certificate)
+		if err != nil {
+			return err
+		}
 
 		// Because the metadata file is not provided, we need to simulate an IDP to create artificial metadata from the data entered in the conf file
-		simulatedIDP := samlidp.IdentityProvider{
+		tempIDP := samlidp.IdentityProvider{
 			Key:         nil,
 			Certificate: IDPCertificate,
 			Logger:      nil,
@@ -236,9 +245,8 @@ func (h *Handler) instantiateMiddleware(r *http.Request) error {
 			LogoutURL:   *IDPlogoutURL,
 		}
 
-		// Now we assign the artificial metadata to our SP to act as if it had been filled in
-		idpMetadata = simulatedIDP.Metadata()
-
+		// Now we assign our reconstructed metadata to our SP
+		idpMetadata = tempIDP.Metadata()
 	}
 
 	// The main URL
@@ -304,14 +312,14 @@ func GetMiddleware() (*samlsp.Middleware, error) {
 	return samlMiddleware, nil
 }
 
-func mustParseCertificate(pemStr []byte) *x509.Certificate {
+func MustParseCertificate(pemStr []byte) (*x509.Certificate, error) {
 	b, _ := pem.Decode(pemStr)
 	if b == nil {
-		panic("cannot parse PEM")
+		return nil, errors.Errorf("Cannot find the next PEM formatted block")
 	}
 	cert, err := x509.ParseCertificate(b.Bytes)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return cert
+	return cert, nil
 }

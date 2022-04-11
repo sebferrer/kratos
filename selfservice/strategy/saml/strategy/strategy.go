@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
@@ -91,6 +92,22 @@ type registrationStrategyDependencies interface {
 // This file is like an helper for login and register flow
 //###############
 
+func (s *Strategy) ID() identity.CredentialsType {
+	return identity.CredentialsTypeSAML
+}
+
+func (s *Strategy) D() registrationStrategyDependencies {
+	return s.d
+}
+
+func (s *Strategy) NodeGroup() node.Group {
+	return node.SAMLGroup
+}
+
+func uid(provider, subject string) string {
+	return fmt.Sprintf("%s:%s", provider, subject)
+}
+
 type Strategy struct {
 	d  registrationStrategyDependencies
 	f  *fetcher.Fetcher
@@ -112,14 +129,11 @@ func (s *Strategy) setRoutes(r *x.RouterPublic) {
 	wrappedHandleCallback := strategy.IsDisabled(s.d, s.ID().String(), s.handleCallback)
 	if handle, _, _ := r.Lookup("POST", RouteAcs); handle == nil {
 		r.POST(RouteAcs, wrappedHandleCallback)
-	} //ACS SUPPORT
+	} // ACS SUPPORT
 }
 
-// Retrieves the user's attributes from the SAML Assertion
-func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Request, m samlsp.Middleware) (map[string][]string, error) {
-
-	r.ParseForm()
-
+// Get possible SAML Request IDs
+func GetPossibleRequestIDs(r *http.Request, m samlsp.Middleware) []string {
 	possibleRequestIDs := []string{}
 	if m.ServiceProvider.AllowIDPInitiated {
 		possibleRequestIDs = append(possibleRequestIDs, "")
@@ -130,20 +144,16 @@ func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 		possibleRequestIDs = append(possibleRequestIDs, tr.SAMLRequestID)
 	}
 
-	assertion, err := m.ServiceProvider.ParseResponse(r, possibleRequestIDs)
-	if err != nil {
-		m.OnError(w, r, err)
-		return nil, err
-	}
+	return possibleRequestIDs
+}
 
+// Retrieves the user's attributes from the SAML Assertion
+func (s *Strategy) GetAttributesFromAssertion(assertion *saml.Assertion) (map[string][]string, error) {
 	attributes := map[string][]string{}
 
 	for _, attributeStatement := range assertion.AttributeStatements {
 		for _, attr := range attributeStatement.Attributes {
-			claimName := attr.FriendlyName
-			if claimName == "" {
-				claimName = attr.Name
-			}
+			claimName := attr.Name
 			for _, value := range attr.Values {
 				attributes[claimName] = append(attributes[claimName], value.Value)
 			}
@@ -155,21 +165,29 @@ func (s *Strategy) GetAttributesFromAssertion(w http.ResponseWriter, r *http.Req
 
 // Handle /selfservice/methods/saml/acs | Receive SAML response, parse the attributes and start auth flow
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	r.ParseForm()
 
 	m, err := samlflow.GetMiddleware()
 	if err != nil {
 		s.forwardError(w, r, err)
 	}
 
+	// We get the possible SAML request IDs
+	possibleRequestIDs := GetPossibleRequestIDs(r, *m)
+	assertion, err := m.ServiceProvider.ParseResponse(r, possibleRequestIDs)
+	if err != nil {
+		s.forwardError(w, r, err)
+	}
+
 	// We get the user's attributes from the SAML Response (assertion)
-	attributes, err := s.GetAttributesFromAssertion(w, r, *m)
+	attributes, err := s.GetAttributesFromAssertion(assertion)
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
 	}
 
 	// We get the provider information from the config file
-	provider, err := s.provider(r.Context(), r)
+	provider, err := s.Provider(r.Context())
 	if err != nil {
 		s.forwardError(w, r, err)
 		return
@@ -196,7 +214,7 @@ func (s *Strategy) forwardError(w http.ResponseWriter, r *http.Request, err erro
 }
 
 // Return the SAML Provider
-func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.Provider, error) {
+func (s *Strategy) Provider(ctx context.Context) (samlstrategy.Provider, error) {
 	c, err := s.Config(ctx)
 	if err != nil {
 		return nil, err
@@ -208,10 +226,6 @@ func (s *Strategy) provider(ctx context.Context, r *http.Request) (samlstrategy.
 	}
 
 	return provider, nil
-}
-
-func (s *Strategy) NodeGroup() node.Group {
-	return node.SAMLGroup
 }
 
 // Translate YAML Config file into a SAML Provider struct
@@ -237,13 +251,9 @@ func (s *Strategy) populateMethod(r *http.Request, c *container.Container, messa
 
 	// does not need sorting because there is only one field
 	c.SetCSRF(s.d.GenerateCSRFToken(r))
-	//AddSamlProviders(c, conf.Providers, message)
+	// AddSamlProviders(c, conf.Providers, message)
 
 	return nil
-}
-
-func (s *Strategy) ID() identity.CredentialsType {
-	return identity.CredentialsTypeSAML
 }
 
 func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Flow, provider string, traits []byte, err error) error {
@@ -277,10 +287,6 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 	}
 
 	return err
-}
-
-func uid(provider, subject string) string {
-	return fmt.Sprintf("%s:%s", provider, subject)
 }
 
 func (s *Strategy) CountActiveCredentials(cc map[identity.CredentialsType]identity.Credentials) (count int, err error) {
