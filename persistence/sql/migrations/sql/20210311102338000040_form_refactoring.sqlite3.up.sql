@@ -10,6 +10,6 @@ CREATE TABLE "_selfservice_recovery_flows_tmp" (
 "created_at" DATETIME NOT NULL,
 "updated_at" DATETIME NOT NULL,
 "type" TEXT NOT NULL DEFAULT 'browser',
-"ui" TEXT,
+"ui" TEXT NOT NULL,
 FOREIGN KEY (recovered_identity_id) REFERENCES identities (id) ON UPDATE NO ACTION ON DELETE CASCADE
 );

@@ -6,6 +6,6 @@ CREATE TABLE "_sessions_tmp" (
 "identity_id" char(36) NOT NULL,
 "created_at" DATETIME NOT NULL,
 "updated_at" DATETIME NOT NULL,
-"token" TEXT,
+"token" TEXT NOT NULL,
 FOREIGN KEY (identity_id) REFERENCES identities (id) ON UPDATE NO ACTION ON DELETE CASCADE
 );

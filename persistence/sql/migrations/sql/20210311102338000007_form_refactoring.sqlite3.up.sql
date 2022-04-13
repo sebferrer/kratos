@@ -9,5 +9,5 @@ CREATE TABLE "_selfservice_login_flows_tmp" (
 "updated_at" DATETIME NOT NULL,
 "forced" bool NOT NULL DEFAULT 'false',
 "type" TEXT NOT NULL DEFAULT 'browser',
-"ui" TEXT
+"ui" TEXT NOT NULL
 );

@@ -1,1 +1,1 @@
-ALTER TABLE "selfservice_verification_flows" ALTER COLUMN "nid" TYPE UUID, ALTER COLUMN "nid" DROP NOT NULL;
+ALTER TABLE "selfservice_verification_flows" ALTER COLUMN "nid" TYPE UUID, ALTER COLUMN "nid" SET NOT NULL;

@@ -127,14 +127,15 @@ WHERE ici.identifier = ?
 func (p *Persister) findIdentityCredentialsType(ctx context.Context, ct identity.CredentialsType) (*identity.CredentialsTypeTable, error) {
 	var m identity.CredentialsTypeTable
 	if err := p.GetConnection(ctx).Where("name = ?", ct).First(&m); err != nil {
+
 		return nil, sqlcon.HandleError(err)
 	}
+
 	return &m, nil
 }
 
 func (p *Persister) createIdentityCredentials(ctx context.Context, i *identity.Identity) error {
 	c := p.GetConnection(ctx)
-
 	nid := corp.ContextualizeNID(ctx, p.nid)
 	for k := range i.Credentials {
 		cred := i.Credentials[k]
@@ -142,7 +143,6 @@ func (p *Persister) createIdentityCredentials(ctx context.Context, i *identity.I
 		if len(cred.Config) == 0 {
 			cred.Config = sqlxx.JSONRawMessage("{}")
 		}
-
 		ct, err := p.findIdentityCredentialsType(ctx, cred.Type)
 		if err != nil {
 			return err

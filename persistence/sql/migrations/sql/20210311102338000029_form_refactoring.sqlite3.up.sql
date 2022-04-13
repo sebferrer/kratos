@@ -9,6 +9,6 @@ CREATE TABLE "_selfservice_settings_flows_tmp" (
 "active_method" TEXT,
 "state" TEXT NOT NULL DEFAULT 'show_form',
 "type" TEXT NOT NULL DEFAULT 'browser',
-"ui" TEXT,
+"ui" TEXT NOT NULL,
 FOREIGN KEY (identity_id) REFERENCES identities (id) ON UPDATE NO ACTION ON DELETE CASCADE
 );

@@ -1,0 +1,1 @@
+UPDATE identity_verification_addresses SET value = LOWER(value) WHERE TRUE;

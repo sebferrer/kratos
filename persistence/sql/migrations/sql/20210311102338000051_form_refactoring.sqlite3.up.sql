@@ -9,5 +9,5 @@ CREATE TABLE "_selfservice_verification_flows_tmp" (
 "type" TEXT NOT NULL DEFAULT 'browser',
 "state" TEXT NOT NULL DEFAULT 'show_form',
 "active_method" TEXT,
-"ui" TEXT
+"ui" TEXT NOT NULL
 );

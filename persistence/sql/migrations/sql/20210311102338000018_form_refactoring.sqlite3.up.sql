@@ -8,5 +8,5 @@ CREATE TABLE "_selfservice_registration_flows_tmp" (
 "created_at" DATETIME NOT NULL,
 "updated_at" DATETIME NOT NULL,
 "type" TEXT NOT NULL DEFAULT 'browser',
-"ui" TEXT
+"ui" TEXT NOT NULL
 );
