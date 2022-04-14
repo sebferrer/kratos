@@ -998,6 +998,23 @@
         ],
         "type": "object"
       },
+      "selfServiceSamlUrl": {
+        "properties": {
+          "saml_acs_url": {
+            "description": "SamlAcsURL is a post endpoint to handle SAML Response\n\nformat: uri",
+            "type": "string"
+          },
+          "saml_metadata_url": {
+            "description": "SamlMetadataURL is a get endpoint to get the metadata\n\nformat: uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "saml_metadata_url",
+          "saml_acs_url"
+        ],
+        "type": "object"
+      },
       "selfServiceSettingsFlow": {
         "description": "This flow is used when an identity wants to update settings\n(e.g. profile data, passwords, ...) in a selfservice manner.\n\nWe recommend reading the [User Settings Documentation](../self-service/flows/user-settings)",
         "properties": {
