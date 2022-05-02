@@ -28,17 +28,12 @@
           }
         },
         "name": {
-          "type": "object",
-          "properties": {
-            "first": {
-              "title": "First Name",
+          "title": "First Name",
               "type": "string"
-            },
-            "last": {
-              "title": "Last Name",
+        },
+        "last_name": {
+          "title": "Last Name",
               "type": "string"
-            }
-          }
         }
       },
       "required": [
