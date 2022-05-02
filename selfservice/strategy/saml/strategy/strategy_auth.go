@@ -27,11 +27,19 @@ func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request
 			// The user doesn't net existe yet so we register him
 			registerFlow, err := s.d.RegistrationHandler().NewRegistrationFlow(w, r, flow.TypeBrowser)
 			if err != nil {
-				return nil, s.handleError(w, r, registerFlow, provider.Config().ID, i.Traits, err)
+				if i == nil {
+					return nil, s.handleError(w, r, registerFlow, provider.Config().ID, nil, err)
+				} else {
+					return nil, s.handleError(w, r, registerFlow, provider.Config().ID, i.Traits, err)
+				}
 			}
 
 			if err = s.processRegistration(w, r, registerFlow, provider, claims); err != nil {
-				return nil, s.handleError(w, r, registerFlow, provider.Config().ID, i.Traits, err)
+				if i == nil {
+					return nil, s.handleError(w, r, registerFlow, provider.Config().ID, nil, err)
+				} else {
+					return nil, s.handleError(w, r, registerFlow, provider.Config().ID, i.Traits, err)
+				}
 			}
 
 			return nil, nil
@@ -43,10 +51,18 @@ func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request
 		// The user already exist in database so we log him
 		loginFlow, err := s.d.LoginHandler().NewLoginFlow(w, r, flow.TypeBrowser)
 		if err != nil {
-			return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
+			if i == nil {
+				return nil, s.handleError(w, r, loginFlow, provider.Config().ID, nil, err)
+			} else {
+				return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
+			}
 		}
 		if _, err = s.processLogin(w, r, loginFlow, provider, c, i, claims); err != nil {
-			return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
+			if i == nil {
+				return nil, s.handleError(w, r, loginFlow, provider.Config().ID, nil, err)
+			} else {
+				return nil, s.handleError(w, r, loginFlow, provider.Config().ID, i.Traits, err)
+			}
 		}
 		return nil, nil
 	}
