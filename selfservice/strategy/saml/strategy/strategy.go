@@ -149,6 +149,11 @@ func GetPossibleRequestIDs(r *http.Request, m samlsp.Middleware) []string {
 
 // Retrieves the user's attributes from the SAML Assertion
 func (s *Strategy) GetAttributesFromAssertion(assertion *saml.Assertion) (map[string][]string, error) {
+
+	if assertion == nil {
+		return nil, errors.New("The assertion is nil")
+	}
+
 	attributes := map[string][]string{}
 
 	for _, attributeStatement := range assertion.AttributeStatements {
