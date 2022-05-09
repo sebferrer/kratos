@@ -273,6 +273,9 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 
 	// Crewjam library use default route for ACS and metadat but we want to overwrite them
 	metadata, err := url.Parse(publicUrlString + RouteSamlMetadata)
+	if err != nil {
+		return err
+	}
 	samlMiddleWare.ServiceProvider.MetadataURL = *metadata
 
 	// The EntityID in the AuthnRequest is the Metadata URL

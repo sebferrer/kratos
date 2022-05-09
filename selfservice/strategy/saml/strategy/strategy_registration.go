@@ -87,7 +87,7 @@ func (s *Strategy) GetRegistrationIdentity(r *http.Request, ctx context.Context,
 		return i, err
 	}
 
-	// Create new uniq credentials identifier for user is database
+	// Create new unique credentials identifier for user is database
 	creds, err := NewCredentialsForSAML(claims.Subject, provider.Config().ID)
 	if err != nil {
 		return i, err
@@ -128,5 +128,5 @@ func (s *Strategy) PopulateRegistrationMethod(r *http.Request, f *registration.F
 
 // Method not used but necessary to implement the interface
 func (s *Strategy) Register(w http.ResponseWriter, r *http.Request, f *registration.Flow, i *identity.Identity) (err error) {
-	return nil
+	return flow.ErrStrategyNotResponsible
 }

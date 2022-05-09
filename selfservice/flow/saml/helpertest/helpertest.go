@@ -182,21 +182,32 @@ func InitMiddlewareWithoutMetadata(t *testing.T, idpSsoUrl string, idpEntityId s
 	return InitMiddleware(t, idpInformation)
 }
 
-func GetAndDecryptAssertion(t *testing.T, samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
+func GetAndDecryptAssertion(samlResponseFile string, key *rsa.PrivateKey) (*crewjamsaml.Assertion, error) {
 	// Load saml response test file
 	samlResponse, err := ioutil.ReadFile(samlResponseFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// Decrypt saml response assertion
 	doc := etree.NewDocument()
 	err = doc.ReadFromBytes(samlResponse)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	responseEl := doc.Root()
 	el := responseEl.FindElement("//EncryptedAssertion/EncryptedData")
 	plaintextAssertion, err := xmlenc.Decrypt(key, el)
+	if err != nil {
+		return nil, err
+	}
 
 	assertion := &crewjamsaml.Assertion{}
 	err = xml.Unmarshal(plaintextAssertion, assertion)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
-	return assertion, err
+	return assertion, nil
 }

@@ -44,12 +44,10 @@ func (s *Strategy) processLogin(w http.ResponseWriter, r *http.Request, a *login
 	return nil, nil
 }
 
-// Method not used but necessary to implement the interface
 func (s *Strategy) Login(w http.ResponseWriter, r *http.Request, f *login.Flow, ss *session.Session) (i *identity.Identity, err error) {
-	return nil, nil
+	return nil, flow.ErrStrategyNotResponsible
 }
 
-// Method not used but necessary to implement the interface
 func (s *Strategy) PopulateLoginMethod(r *http.Request, requestedAAL identity.AuthenticatorAssuranceLevel, l *login.Flow) error {
 	if l.Type != flow.TypeBrowser {
 		return nil

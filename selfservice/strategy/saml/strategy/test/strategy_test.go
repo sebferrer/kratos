@@ -28,7 +28,7 @@ func TestGetAndDecryptAssertion(t *testing.T) {
 	middleware, _, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
 
-	assertion, err := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, err := helpertest.GetAndDecryptAssertion("./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
 
 	require.NoError(t, err)
 	assert.Check(t, assertion != nil)
@@ -44,7 +44,8 @@ func TestGetAttributesFromAssertion(t *testing.T) {
 	middleware, strategy, _, _ := helpertest.InitMiddlewareWithMetadata(t,
 		"file://testdata/idp_saml_metadata.xml")
 
-	assertion, _ := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, err := helpertest.GetAndDecryptAssertion("./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	require.NoError(t, err)
 
 	mapAttributes, err := strategy.GetAttributesFromAssertion(assertion)
 
@@ -181,7 +182,8 @@ func TestGetRegistrationIdentity(t *testing.T) {
 		"file://testdata/idp_saml_metadata.xml")
 
 	provider, _ := strategy.Provider(context.Background())
-	assertion, _ := helpertest.GetAndDecryptAssertion(t, "./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	assertion, err := helpertest.GetAndDecryptAssertion("./testdata/SP_SamlResponse.xml", middleware.ServiceProvider.Key)
+	require.NoError(t, err)
 	attributes, _ := strategy.GetAttributesFromAssertion(assertion)
 	claims, _ := provider.Claims(context.Background(), strategy.D().Config(context.Background()), attributes)
 
