@@ -59,7 +59,6 @@ selfservice:
               #idp_certificate_path: file://quickstart/kratos/email-password/sso.federation.ovh.cert
               #idp_logout_url: https://sso.federation.ovh/adfs/ls/
               
-              
             ## samlTest.id IDP attributes map
             attributes_map:
               id: urn:oid:0.9.2342.19200300.100.1.3
