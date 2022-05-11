@@ -34,6 +34,10 @@
         "last_name": {
           "title": "Last Name",
               "type": "string"
+        },
+        "roles": {
+          "title": "Roles",
+            "type": "array"
         }
       },
       "required": [

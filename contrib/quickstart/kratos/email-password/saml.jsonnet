@@ -13,7 +13,7 @@ local claims = {
       [if "phone_number" in claims then "phone_number" else null]: claims.phone_number,
       [if "gender" in claims then "gender" else null]: claims.gender,
       [if "birthdate" in claims then "birthdate" else null]: claims.birthdate,
-
+      [if "roles" in claims then "roles" else null]: claims.roles,
     },
   },
 }
