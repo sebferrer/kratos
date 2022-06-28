@@ -61,6 +61,7 @@ type registrationStrategyDependencies interface {
 	config.Provider
 
 	continuity.ManagementProvider
+	continuity.ManagementProviderRelayState
 
 	errorx.ManagementProvider
 	hash.HashProvider
@@ -243,9 +244,44 @@ func (s *Strategy) alreadyAuthenticated(w http.ResponseWriter, r *http.Request, 
 	return false
 }
 
+func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flow.Flow, *authCodeContainer, error) {
+	var cntnr authCodeContainer
+	// "key ory_kratos_saml_auth_code_session does not exist in cookie: ory_kratos_continuity"
+	// "The browser does not contain the necessary cookie to resume the session. This is a security violation and was blocked. Please clear your browser's cookies and cache and try again!"
+	// https://github.com/ory/kratos/discussions/2108
+	if _, err := s.d.RelayStateContinuityManager().Continue(r.Context(), w, r, sessionName, continuity.WithPayload(&cntnr)); err != nil {
+		return nil, nil, err
+	}
+
+	req, err := s.validateFlow(r.Context(), r, x.ParseUUID(cntnr.FlowID))
+	if err != nil {
+		return nil, &cntnr, err
+	}
+
+	if r.URL.Query().Get("error") != "" {
+		return req, &cntnr, errors.WithStack(herodot.ErrBadRequest.WithReasonf(`Unable to complete SAML flow because the SAML Provider returned error "%s": %s`, r.URL.Query().Get("error"), r.URL.Query().Get("error_description")))
+	}
+
+	return req, &cntnr, nil
+}
+
 // Handle /selfservice/methods/saml/acs | Receive SAML response, parse the attributes and start auth flow
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	r.ParseForm()
+
+	pid := ps.ByName("provider")
+
+	req, _, err := s.validateCallback(w, r)
+	if err != nil {
+		if req != nil {
+			s.forwardError(w, r, s.handleError(w, r, req, pid, nil, err))
+			// TODO add flow param to s.handleError
+			// s.forwardError(w, r, req, s.handleError(w, r, req, pid, nil, err))
+		} else {
+			s.d.SelfServiceErrorManager().Forward(r.Context(), w, r, s.handleError(w, r, nil, pid, nil, err))
+		}
+		return
+	}
 
 	m, err := samlflow.GetMiddleware()
 	if err != nil {
@@ -280,12 +316,16 @@ func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// Now that we have the claims and the provider, we have to decide if we log or register the user
-	if ff, err := s.processLoginOrRegister(w, r, provider, claims); err != nil {
-		if ff != nil {
+	switch a := req.(type) {
+	case *login.Flow:
+		// Now that we have the claims and the provider, we have to decide if we log or register the user
+		if ff, err := s.processLoginOrRegister(w, r, a, provider, claims); err != nil {
+			if ff != nil {
+				s.forwardError(w, r, err)
+			}
 			s.forwardError(w, r, err)
 		}
-		s.forwardError(w, r, err)
+		return
 	}
 }
 
@@ -356,13 +396,13 @@ func (s *Strategy) handleError(w http.ResponseWriter, r *http.Request, f flow.Fl
 				return err
 			}
 
-			traitNodes, err := container.NodesFromJSONSchema(r.Context(), node.OpenIDConnectGroup, ds.String(), "", nil)
+			traitNodes, err := container.NodesFromJSONSchema(r.Context(), node.SAMLGroup, ds.String(), "", nil)
 			if err != nil {
 				return err
 			}
 
 			rf.UI.Nodes = append(rf.UI.Nodes, traitNodes...)
-			rf.UI.UpdateNodeValuesFromJSON(traits, "traits", node.OpenIDConnectGroup)
+			rf.UI.UpdateNodeValuesFromJSON(traits, "traits", node.SAMLGroup)
 		}
 
 		return err

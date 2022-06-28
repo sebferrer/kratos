@@ -2,6 +2,13 @@ version: v0.7.1-alpha.1
 
 dsn: postgres://kratos:secret@localhost:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
 
+cookies:
+    same_site: None
+
+session:
+  cookie:
+    same_site: None
+
 serve:
   public:
     tls:
@@ -12,6 +19,10 @@ serve:
     base_url: https://samlkratos.ovh:4433/
     cors:
       enabled: true
+      allowed_origins:
+        - https://sso.federation.ovh
+        - https://*.federation.ovh
+        - https://federation.ovh
   admin:
     tls:
       cert:
@@ -24,11 +35,34 @@ selfservice:
   default_browser_return_url: https://samlkratos.ovh:4455/
   allowed_return_urls:
     - https://samlkratos.ovh:4455
+    - https://google.com
 
   methods:
     password:
       enabled: true
-
+    oidc:
+      enabled: true
+      config:
+        providers:
+          - id: adfs
+            label: OIDC SSO
+            provider: generic
+            client_id: ba854140-1dd1-46ce-9060-dbeea5389416 # given by AD
+            client_secret: 2LLXrsuY-i1iM0ecsupRhwKxi36wOGHupafPzaRN # given by AD
+            mapper_url: file://contrib/quickstart/kratos/email-password/saml.jsonnet
+            issuer_url: https://sso.federation.ovh/adfs
+            scope:
+              - email
+              - profile
+              - openid
+            requested_claims:
+              userinfo:
+                given_name:
+                  essential: true
+                family_name:
+                  essential: true
+                email:
+                  essential: true
     saml:
       enabled: true
       config:
@@ -115,6 +149,9 @@ selfservice:
       lifespan: 10m
       ui_url: https://samlkratos.ovh:4455/registration
       after:
+        oidc:
+          hooks:
+            - hook: session
         password:
           hooks:
             -

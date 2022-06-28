@@ -39,6 +39,8 @@ const (
 var ErrNoSession = errors.New("saml: session not present")
 var samlMiddleware *samlsp.Middleware
 
+var HandlerSessionData = &SessionData{SessionID: ""}
+
 type (
 	handlerDependencies interface {
 		x.WriterProvider
@@ -65,6 +67,10 @@ type CookieSessionProvider struct {
 	SameSite http.SameSite
 	MaxAge   time.Duration
 	Codec    samlsp.SessionCodec
+}
+
+type SessionData struct {
+	SessionID string
 }
 
 func NewHandler(d handlerDependencies) *Handler {
@@ -123,7 +129,6 @@ func (h *Handler) serveMetadata(w http.ResponseWriter, r *http.Request, ps httpr
 //       400: jsonError
 //       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
 	// Middleware is a singleton so we have to verify that it exist
 	if samlMiddleware == nil {
 		config := h.d.Config(r.Context())
@@ -255,6 +260,11 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		return err
 	}
 
+	// We have to get the SessionID of Kratos
+	// iID, err := uuid.FromString(ps.ByName("id"))
+	// s, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
+	// s, err := h.d.SessionPersister().GetSession(r.Context(), iID)
+
 	// Here we create a MiddleWare to transform Kratos into a Service Provider
 	samlMiddleWare, err := samlsp.New(samlsp.Options{
 		URL:         *rootURL,
@@ -262,10 +272,16 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		Certificate: keyPair.Leaf,
 		IDPMetadata: idpMetadata,
 		SignRequest: true,
+		// We have to replace the ContinuityCookie by using RelayState. We will pass the SessionID (uuid) of Kratos through RelayState
+		RelayStateFunc: func(w http.ResponseWriter, r *http.Request) string {
+			return HandlerSessionData.SessionID
+		},
 	})
 	if err != nil {
 		return err
 	}
+	// samlMiddleWare.Binding = saml.HTTPPostBinding
+	// samlMiddleWare.ResponseBinding = saml.HTTPRedirectBinding
 
 	var publicUrlString = config.SelfPublicURL().String()
 
@@ -290,8 +306,11 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		samlMiddleWare.ServiceProvider.AcsURL = *u
 	}
 
-	// Crewjam library use default route for ACS and metadat but we want to overwrite them
+	// Crewjam library use default route for ACS and metadata but we want to overwrite them
 	metadata, err := url.Parse(publicUrlString + RouteSamlMetadata)
+	if err != nil {
+		return err
+	}
 	samlMiddleWare.ServiceProvider.MetadataURL = *metadata
 
 	// The EntityID in the AuthnRequest is the Metadata URL

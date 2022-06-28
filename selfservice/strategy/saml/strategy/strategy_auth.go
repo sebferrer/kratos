@@ -6,6 +6,7 @@ import (
 
 	"github.com/ory/kratos/identity"
 	"github.com/ory/kratos/selfservice/flow"
+	"github.com/ory/kratos/selfservice/flow/login"
 	samlsp "github.com/ory/kratos/selfservice/strategy/saml"
 	"github.com/ory/x/sqlcon"
 )
@@ -15,7 +16,7 @@ import (
 //#################
 
 // Handle SAML Assertion and process to either login or register
-func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request, provider samlsp.Provider, claims *samlsp.Claims) (*flow.Flow, error) {
+func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request, loginFlow *login.Flow, provider samlsp.Provider, claims *samlsp.Claims) (*flow.Flow, error) {
 
 	// This is a check to see if the user exists in the database
 	i, c, err := s.d.PrivilegedIdentityPool().FindByCredentialsIdentifier(r.Context(), identity.CredentialsTypeSAML, uid(provider.Config().ID, claims.Subject))
@@ -49,7 +50,7 @@ func (s *Strategy) processLoginOrRegister(w http.ResponseWriter, r *http.Request
 		}
 	} else {
 		// The user already exist in database so we log him
-		loginFlow, err := s.d.LoginHandler().NewLoginFlow(w, r, flow.TypeBrowser)
+		// loginFlow, err := s.d.LoginHandler().NewLoginFlow(w, r, flow.TypeBrowser)
 		if err != nil {
 			if i == nil {
 				return nil, s.handleError(w, r, loginFlow, provider.Config().ID, nil, err)

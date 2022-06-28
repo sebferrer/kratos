@@ -99,6 +99,9 @@ type RegistryDefault struct {
 
 	continuityManager continuity.Manager
 
+	x.RelayStateProvider
+	session.ManagementProvider
+
 	schemaHandler *schema.Handler
 
 	sessionHandler *session.Handler
@@ -462,7 +465,46 @@ func (m *RegistryDefault) CookieManager(ctx context.Context) sessions.StoreExact
 	return cs
 }
 
+func (m *RegistryDefault) RelayStateManager(ctx context.Context) sessions.StoreExact {
+	var keys [][]byte
+	for _, k := range m.Config(ctx).SecretsSession() {
+		encrypt := sha256.Sum256(k)
+		keys = append(keys, k, encrypt[:])
+	}
+
+	cs := sessions.NewCookieStore(keys...)
+	cs.Options.Secure = !m.Config(ctx).IsInsecureDevMode()
+	cs.Options.HttpOnly = true
+
+	if domain := m.Config(ctx).SessionDomain(); domain != "" {
+		cs.Options.Domain = domain
+	}
+
+	if path := m.Config(ctx).SessionPath(); path != "" {
+		cs.Options.Path = path
+	}
+
+	if sameSite := m.Config(ctx).SessionSameSiteMode(); sameSite != 0 {
+		cs.Options.SameSite = sameSite
+	}
+
+	cs.Options.MaxAge = 0
+	if m.Config(ctx).SessionPersistentCookie() {
+		cs.Options.MaxAge = int(m.Config(ctx).SessionLifespan().Seconds())
+	}
+	return cs
+}
+
 func (m *RegistryDefault) ContinuityCookieManager(ctx context.Context) sessions.StoreExact {
+	// To support hot reloading, this can not be instantiated only once.
+	cs := sessions.NewCookieStore(m.Config(ctx).SecretsSession()...)
+	cs.Options.Secure = !m.Config(ctx).IsInsecureDevMode()
+	cs.Options.HttpOnly = true
+	cs.Options.SameSite = http.SameSiteLaxMode
+	return cs
+}
+
+func (m *RegistryDefault) ContinuityRelayStateManager(ctx context.Context) sessions.StoreExact {
 	// To support hot reloading, this can not be instantiated only once.
 	cs := sessions.NewCookieStore(m.Config(ctx).SecretsSession()...)
 	cs.Options.Secure = !m.Config(ctx).IsInsecureDevMode()
@@ -608,6 +650,13 @@ func (m *RegistryDefault) Courier(ctx context.Context) courier.Courier {
 func (m *RegistryDefault) ContinuityManager() continuity.Manager {
 	if m.continuityManager == nil {
 		m.continuityManager = continuity.NewManagerCookie(m)
+	}
+	return m.continuityManager
+}
+
+func (m *RegistryDefault) RelayStateContinuityManager() continuity.Manager {
+	if m.continuityManager == nil {
+		m.continuityManager = continuity.NewManagerRelayState(m)
 	}
 	return m.continuityManager
 }
