@@ -246,9 +246,6 @@ func (s *Strategy) alreadyAuthenticated(w http.ResponseWriter, r *http.Request, 
 
 func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flow.Flow, *authCodeContainer, error) {
 	var cntnr authCodeContainer
-	// "key ory_kratos_saml_auth_code_session does not exist in cookie: ory_kratos_continuity"
-	// "The browser does not contain the necessary cookie to resume the session. This is a security violation and was blocked. Please clear your browser's cookies and cache and try again!"
-	// https://github.com/ory/kratos/discussions/2108
 	if _, err := s.d.RelayStateContinuityManager().Continue(r.Context(), w, r, sessionName, continuity.WithPayload(&cntnr)); err != nil {
 		return nil, nil, err
 	}

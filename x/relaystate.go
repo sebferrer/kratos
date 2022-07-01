@@ -6,59 +6,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-/*// SessionPersistValues adds values to the session store and persists the changes.
-func SessionPersistValues(w http.ResponseWriter, r *http.Request, s sessions.StoreExact, id string, values map[string]interface{}) error {
-	// The error does not matter because in the worst case we're re-writing the session cookie.
-	cookie, _ := s.Get(r, id)
-	for k, v := range values {
-		cookie.Values[k] = v
-	}
+// SessionPersistValues adds values to the session store and persists the changes.
+func SessionPersistValuesRelayState(relayStateValue *string, id string) error {
+	*relayStateValue = id
 
-	return errors.WithStack(cookie.Save(r, w))
-}*/
+	return nil
+}
 
-// SessionGetString returns a string for the given id and key or an error if the session is invalid,
-// the key does not exist, or the key value is not a string.
-func SessionGetRelayState(r *http.Request) (string, error) {
+// SessionGetRelayState returns a string of the content of the relaystate for the current session.
+func SessionGetStringRelayState(r *http.Request) (string, error) {
 	relayState := r.PostForm.Get("RelayState")
 	if relayState == "" {
-		return "", errors.New("The RelayState is empty or inexistant")
+		return "", errors.New("The RelayState is empty or not exists")
 	}
 
 	return relayState, nil
 }
 
-/*
-// SessionGetStringOr returns a string for the given id and key or the fallback value if the session is invalid,
-// the key does not exist, or the key value is not a string.
-func SessionGetStringOr(r *http.Request, s sessions.StoreExact, id, key, fallback string) string {
-	v, err := SessionGetString(r, s, id, key)
-	if err != nil {
-		return fallback
-	}
-	return v
+func SessionUnsetRelayState(relayStateValue *string) error {
+	*relayStateValue = ""
+
+	return nil
 }
-
-func SessionUnset(w http.ResponseWriter, r *http.Request, s sessions.StoreExact, id string) error {
-	cookie, err := s.Get(r, id)
-	if err == nil && cookie.IsNew {
-		// No cookie was sent in the request. We have nothing to do.
-		return nil
-	}
-
-	cookie.Options.MaxAge = -1
-	cookie.Values = make(map[interface{}]interface{})
-	return errors.WithStack(cookie.Save(r, w))
-}
-
-func SessionUnsetKey(w http.ResponseWriter, r *http.Request, s sessions.StoreExact, id, key string) error {
-	cookie, err := s.Get(r, id)
-	if err == nil && cookie.IsNew {
-		// No cookie was sent in the request. We have nothing to do.
-		return nil
-	}
-
-	delete(cookie.Values, key)
-	return errors.WithStack(cookie.Save(r, w))
-}
-*/

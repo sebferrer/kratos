@@ -39,7 +39,7 @@ const (
 var ErrNoSession = errors.New("saml: session not present")
 var samlMiddleware *samlsp.Middleware
 
-var HandlerSessionData = &SessionData{SessionID: ""}
+var RelayStateValue string
 
 type (
 	handlerDependencies interface {
@@ -260,11 +260,6 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		return err
 	}
 
-	// We have to get the SessionID of Kratos
-	// iID, err := uuid.FromString(ps.ByName("id"))
-	// s, err := h.d.SessionManager().FetchFromRequest(r.Context(), r)
-	// s, err := h.d.SessionPersister().GetSession(r.Context(), iID)
-
 	// Here we create a MiddleWare to transform Kratos into a Service Provider
 	samlMiddleWare, err := samlsp.New(samlsp.Options{
 		URL:         *rootURL,
@@ -274,14 +269,12 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		SignRequest: true,
 		// We have to replace the ContinuityCookie by using RelayState. We will pass the SessionID (uuid) of Kratos through RelayState
 		RelayStateFunc: func(w http.ResponseWriter, r *http.Request) string {
-			return HandlerSessionData.SessionID
+			return RelayStateValue
 		},
 	})
 	if err != nil {
 		return err
 	}
-	// samlMiddleWare.Binding = saml.HTTPPostBinding
-	// samlMiddleWare.ResponseBinding = saml.HTTPRedirectBinding
 
 	var publicUrlString = config.SelfPublicURL().String()
 

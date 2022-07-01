@@ -19,9 +19,7 @@ import (
 )
 
 var _ Manager = new(ManagerRelayState)
-var ErrNotResumableRelayState = *herodot.ErrBadRequest.WithError("no resumable session found").WithReasonf("The browser does not contain the necessary RelayState value to resume the session. This is a security violation and was blocked. Please clear your browser's cookies and cache and try again!")
-
-const RelayStateName = "ory_kratos_continuity"
+var ErrNotResumableRelayState = *herodot.ErrBadRequest.WithError("no resumable session found").WithReasonf("The browser does not contain the necessary RelayState value to resume the session. This is a security violation and was blocked. Please try again!")
 
 type (
 	managerRelayStateDependencies interface {
@@ -34,6 +32,9 @@ type (
 	}
 )
 
+// To ensure continuity even after redirection to the IDP, we cannot use cookies because the IDP and the SP are on two different domains.
+// So we have to pass the continuity value through the relaystate.
+// This value corresponds to the session ID
 func NewManagerRelayState(d managerRelayStateDependencies) *ManagerRelayState {
 	return &ManagerRelayState{d: d}
 }
@@ -49,17 +50,14 @@ func (m *ManagerRelayState) Pause(ctx context.Context, w http.ResponseWriter, r 
 	}
 	c := NewContainer(name, *o)
 
-	if err := x.SessionPersistValues(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, map[string]interface{}{
-		name: c.ID.String(),
-	}); err != nil {
+	// Here we put the user's session ID in the relaystate to ensure continuity for the POST method
+	if err := x.SessionPersistValuesRelayState(&samlhandler.RelayStateValue, c.ID.String()); err != nil {
 		return err
 	}
 
 	if err := m.d.ContinuityPersister().SaveContinuitySession(ctx, c); err != nil {
 		return errors.WithStack(err)
 	}
-
-	samlhandler.HandlerSessionData.SessionID = c.ID.String()
 
 	return nil
 }
@@ -85,7 +83,7 @@ func (m *ManagerRelayState) Continue(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	if err := x.SessionUnsetKey(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, name); err != nil {
+	if err := x.SessionUnsetRelayState(&samlhandler.RelayStateValue); err != nil {
 		return nil, err
 	}
 
@@ -98,14 +96,12 @@ func (m *ManagerRelayState) Continue(ctx context.Context, w http.ResponseWriter,
 
 func (m *ManagerRelayState) sid(ctx context.Context, w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, error) {
 	var sid uuid.UUID
-	if s, err := x.SessionGetRelayState(r); err != nil {
-
-		_ = x.SessionUnsetKey(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, name)
+	if s, err := x.SessionGetStringRelayState(r); err != nil {
+		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
 		return sid, errors.WithStack(ErrNotResumable.WithDebugf("%+v", err))
 
 	} else if sid = x.ParseUUID(s); sid == uuid.Nil {
-
-		_ = x.SessionUnsetKey(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, name)
+		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
 		return sid, errors.WithStack(ErrNotResumable.WithDebug("session id is not a valid uuid"))
 
 	}
@@ -120,9 +116,9 @@ func (m *ManagerRelayState) container(ctx context.Context, w http.ResponseWriter
 	}
 
 	container, err := m.d.ContinuityPersister().GetContinuitySession(ctx, sid)
-	// If an error happens, we need to clean up the cookie.
+
 	if err != nil {
-		_ = x.SessionUnsetKey(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, name)
+		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
 	}
 
 	if errors.Is(err, sqlcon.ErrNoRows) {
@@ -143,7 +139,7 @@ func (m ManagerRelayState) Abort(ctx context.Context, w http.ResponseWriter, r *
 		return err
 	}
 
-	if err := x.SessionUnsetKey(w, r, m.d.ContinuityRelayStateManager(ctx), RelayStateName, name); err != nil {
+	if err := x.SessionUnsetRelayState(&samlhandler.RelayStateValue); err != nil {
 		return err
 	}
 
