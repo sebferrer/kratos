@@ -121,13 +121,19 @@ func (s *Strategy) Login(w http.ResponseWriter, r *http.Request, f *login.Flow, 
 	if x.IsJSONRequest(r) {
 		s.d.Writer().WriteError(w, r, flow.NewBrowserLocationChangeRequiredError(handler.RouteSamlLoginInit))
 	} else {
+		// We send the SessionID through cookies to ensure continuity
+		cookie := http.Cookie{
+			Name:  "sid",
+			Value: r.Context().Value("sid").(string),
+			Path:  "/",
+		}
+		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, handler.RouteSamlLoginInit, http.StatusSeeOther)
 	}
 
 	return nil, errors.WithStack(flow.ErrCompletedByStrategy)
 }
 
-// Method not used but necessary to implement the interface
 func (s *Strategy) PopulateLoginMethod(r *http.Request, requestedAAL identity.AuthenticatorAssuranceLevel, l *login.Flow) error {
 	if l.Type != flow.TypeBrowser {
 		return nil

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -59,16 +58,6 @@ type (
 	}
 )
 
-type CookieSessionProvider struct {
-	Name     string
-	Domain   string
-	HTTPOnly bool
-	Secure   bool
-	SameSite http.SameSite
-	MaxAge   time.Duration
-	Codec    samlsp.SessionCodec
-}
-
 type SessionData struct {
 	SessionID string
 }
@@ -78,21 +67,6 @@ func NewHandler(d handlerDependencies) *Handler {
 		d:  d,
 		dx: decoderx.NewHTTP(),
 	}
-}
-
-// swagger:model selfServiceSamlUrl
-type selfServiceSamlUrl struct {
-	// SamlMetadataURL is a get endpoint to get the metadata
-	//
-	// format: uri
-	// required: true
-	SamlMetadataURL string `json:"saml_metadata_url"`
-
-	// SamlAcsURL is a post endpoint to handle SAML Response
-	//
-	// format: uri
-	// required: true
-	SamlAcsURL string `json:"saml_acs_url"`
 }
 
 func (h *Handler) RegisterPublicRoutes(router *x.RouterPublic) {
@@ -129,7 +103,7 @@ func (h *Handler) serveMetadata(w http.ResponseWriter, r *http.Request, ps httpr
 //       400: jsonError
 //       500: jsonError
 func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// Middleware is a singleton so we have to verify that it exist
+	// Middleware is a singleton so we have to verify that it exists
 	if samlMiddleware == nil {
 		config := h.d.Config(r.Context())
 		if err := h.instantiateMiddleware(*config); err != nil {
@@ -138,6 +112,18 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 
 	conf := h.d.Config(r.Context())
+
+	// We have to get the SessionID from the cookie to inject it into the context to ensure continuity
+	sid, err := r.Cookie("sid")
+	if err != nil {
+		h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
+	}
+
+	body, _ := ioutil.ReadAll(r.Body)
+	r2 := r.Clone(context.WithValue(r.Context(), "sid", sid.Value))
+	r2.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+	*r = *r2
 
 	// Checks if the user already have an active session
 	if e := new(session.ErrNoActiveSessionFound); errors.As(e, &e) {
@@ -269,7 +255,16 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		SignRequest: true,
 		// We have to replace the ContinuityCookie by using RelayState. We will pass the SessionID (uuid) of Kratos through RelayState
 		RelayStateFunc: func(w http.ResponseWriter, r *http.Request) string {
-			return RelayStateValue
+			ctx := r.Context()
+			sid, ok := ctx.Value("sid").(string)
+			if !ok {
+				_, err := w.Write([]byte("No SessionID in current context"))
+				if err != nil {
+					errors.New("Error while writing the SessionID problem")
+				}
+				return ""
+			}
+			return sid
 		},
 	})
 	if err != nil {

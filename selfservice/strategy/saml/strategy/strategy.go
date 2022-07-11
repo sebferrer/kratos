@@ -264,9 +264,12 @@ func (s *Strategy) validateCallback(w http.ResponseWriter, r *http.Request) (flo
 
 // Handle /selfservice/methods/saml/acs | Receive SAML response, parse the attributes and start auth flow
 func (s *Strategy) handleCallback(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	r.ParseForm()
 
 	pid := ps.ByName("provider")
+
+	if err := r.ParseForm(); err != nil {
+		s.d.SelfServiceErrorManager().Forward(r.Context(), w, r, s.handleError(w, r, nil, pid, nil, err))
+	}
 
 	req, _, err := s.validateCallback(w, r)
 	if err != nil {

@@ -1,7 +1,6 @@
 package helpertest
 
 import (
-	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -12,7 +11,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -26,7 +24,6 @@ import (
 	"github.com/tidwall/gjson"
 	"gotest.tools/golden"
 
-	"github.com/ory/kratos/driver"
 	"github.com/ory/kratos/driver/config"
 	"github.com/ory/kratos/identity"
 	"github.com/ory/kratos/internal"
@@ -40,53 +37,6 @@ import (
 
 var TimeNow = func() time.Time { return time.Now().UTC() }
 var RandReader = rand.Reader
-
-var makeRequestWithCookieJar = func(t *testing.T, destination string, fv url.Values, jar *cookiejar.Jar) (*http.Response, []byte) {
-	res, err := NewClient(t, jar).PostForm(destination, fv)
-	require.NoError(t, err, destination)
-
-	body, err := ioutil.ReadAll(res.Body)
-	require.NoError(t, res.Body.Close())
-	require.NoError(t, err)
-
-	require.Equal(t, 200, res.StatusCode, "%s: %s\n\t%s", destination, res.Request.URL.String(), body)
-
-	return res, body
-}
-
-var makeRequest = func(t *testing.T, action string, fv url.Values) (*http.Response, []byte) {
-	return makeRequestWithCookieJar(t, action, fv, nil)
-}
-
-func newReturnTs(t *testing.T, reg driver.Registry) *httptest.Server {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess, err := reg.SessionManager().FetchFromRequest(r.Context(), r)
-		require.NoError(t, err)
-		require.Empty(t, sess.Identity.Credentials)
-		reg.Writer().Write(w, r, sess)
-	}))
-	reg.Config(context.Background()).MustSet(config.ViperKeySelfServiceBrowserDefaultReturnTo, ts.URL)
-	t.Cleanup(ts.Close)
-	return ts
-}
-
-func newUI(t *testing.T, reg driver.Registry) *httptest.Server {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var e interface{}
-		var err error
-		if r.URL.Path == "/login" {
-			e, err = reg.LoginFlowPersister().GetLoginFlow(r.Context(), x.ParseUUID(r.URL.Query().Get("flow")))
-		} else if r.URL.Path == "/registration" {
-			e, err = reg.RegistrationFlowPersister().GetRegistrationFlow(r.Context(), x.ParseUUID(r.URL.Query().Get("flow")))
-		}
-		require.NoError(t, err)
-		reg.Writer().Write(w, r, e)
-	}))
-	t.Cleanup(ts.Close)
-	reg.Config(context.Background()).MustSet(config.ViperKeySelfServiceLoginUI, ts.URL+"/login")
-	reg.Config(context.Background()).MustSet(config.ViperKeySelfServiceRegistrationUI, ts.URL+"/registration")
-	return ts
-}
 
 func NewSAMLProvider(
 	t *testing.T,
@@ -136,27 +86,6 @@ func AssertSystemError(t *testing.T, errTS *httptest.Server, res *http.Response,
 
 	assert.Equal(t, int64(code), gjson.GetBytes(body, "code").Int(), "%s", body)
 	assert.Contains(t, gjson.GetBytes(body, "reason").String(), reason, "%s", body)
-}
-
-func mustParseURL(s string) url.URL {
-	rv, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return *rv
-}
-
-func makeTrackedRequest(id string, middleware samlsp.Middleware) string {
-	codec := middleware.RequestTracker.(samlsp.CookieRequestTracker).Codec
-	token, err := codec.Encode(samlsp.TrackedRequest{
-		Index:         "KCosLjAyNDY4Ojw-QEJERkhKTE5QUlRWWFpcXmBiZGZoamxucHJ0dnh6",
-		SAMLRequestID: id,
-		URI:           "/frob",
-	})
-	if err != nil {
-		panic(err)
-	}
-	return token
 }
 
 func mustParseCertificate(pemStr []byte) *x509.Certificate {
@@ -223,8 +152,8 @@ func InitMiddleware(t *testing.T, idpInformation map[string]string) (*samlsp.Mid
 	t.Logf("Kratos Error URL: %s", errTS.URL)
 
 	// Instantiates the MiddleWare
-	NewClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
-
+	_, err := NewClient(t, nil).Get(ts.URL + "/self-service/methods/saml/metadata")
+	require.NoError(t, err)
 	middleware, err := samlhandler.GetMiddleware()
 	middleware.ServiceProvider.Key = mustParsePrivateKey(golden.Get(t, "key.pem")).(*rsa.PrivateKey)
 	middleware.ServiceProvider.Certificate = mustParseCertificate(golden.Get(t, "cert.pem"))

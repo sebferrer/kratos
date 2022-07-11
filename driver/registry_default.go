@@ -648,14 +648,20 @@ func (m *RegistryDefault) Courier(ctx context.Context) courier.Courier {
 }
 
 func (m *RegistryDefault) ContinuityManager() continuity.Manager {
-	if m.continuityManager == nil {
+	// If m.continuityManager is nil or not a continuity.ManagerCookie
+	switch m.continuityManager.(type) {
+	case *continuity.ManagerCookie:
+	default:
 		m.continuityManager = continuity.NewManagerCookie(m)
 	}
 	return m.continuityManager
 }
 
 func (m *RegistryDefault) RelayStateContinuityManager() continuity.Manager {
-	if m.continuityManager == nil {
+	// If m.continuityManager is nil or not a continuity.ManagerRelayState
+	switch m.continuityManager.(type) {
+	case *continuity.ManagerRelayState:
+	default:
 		m.continuityManager = continuity.NewManagerRelayState(m)
 	}
 	return m.continuityManager

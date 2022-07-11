@@ -51,11 +51,11 @@ func (m *ManagerRelayState) Pause(ctx context.Context, w http.ResponseWriter, r 
 	c := NewContainer(name, *o)
 
 	// Here we put the user's session ID in the relaystate to ensure continuity for the POST method
-	if err := x.SessionPersistValuesRelayState(&samlhandler.RelayStateValue, c.ID.String()); err != nil {
-		return err
+	if err = x.SessionPersistValuesRelayState(r, c.ID.String()); err != nil {
+		return errors.WithStack(err)
 	}
 
-	if err := m.d.ContinuityPersister().SaveContinuitySession(ctx, c); err != nil {
+	if err := m.d.ContinuityPersister().SaveContinuitySession(r.Context(), c); err != nil {
 		return errors.WithStack(err)
 	}
 
