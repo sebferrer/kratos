@@ -20,10 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//#################
-// This file contains all the methods and functions allowing the login of a user.
-//#################
-
 // Implement the interface
 var _ login.Strategy = new(Strategy)
 
@@ -121,13 +117,7 @@ func (s *Strategy) Login(w http.ResponseWriter, r *http.Request, f *login.Flow, 
 	if x.IsJSONRequest(r) {
 		s.d.Writer().WriteError(w, r, flow.NewBrowserLocationChangeRequiredError(handler.RouteSamlLoginInit))
 	} else {
-		// We send the SessionID through cookies to ensure continuity
-		cookie := http.Cookie{
-			Name:  "sid",
-			Value: r.Context().Value("sid").(string),
-			Path:  "/",
-		}
-		http.SetCookie(w, &cookie)
+
 		http.Redirect(w, r, handler.RouteSamlLoginInit, http.StatusSeeOther)
 	}
 

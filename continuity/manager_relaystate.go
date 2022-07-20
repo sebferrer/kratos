@@ -14,8 +14,6 @@ import (
 
 	"github.com/ory/kratos/session"
 	"github.com/ory/kratos/x"
-
-	samlhandler "github.com/ory/kratos/selfservice/flow/saml"
 )
 
 var _ Manager = new(ManagerRelayState)
@@ -28,15 +26,16 @@ type (
 		session.ManagementProvider
 	}
 	ManagerRelayState struct {
-		d managerRelayStateDependencies
+		dr managerRelayStateDependencies
+		dc managerCookieDependencies
 	}
 )
 
 // To ensure continuity even after redirection to the IDP, we cannot use cookies because the IDP and the SP are on two different domains.
 // So we have to pass the continuity value through the relaystate.
 // This value corresponds to the session ID
-func NewManagerRelayState(d managerRelayStateDependencies) *ManagerRelayState {
-	return &ManagerRelayState{d: d}
+func NewManagerRelayState(dr managerRelayStateDependencies, dc managerCookieDependencies) *ManagerRelayState {
+	return &ManagerRelayState{dr: dr, dc: dc}
 }
 
 func (m *ManagerRelayState) Pause(ctx context.Context, w http.ResponseWriter, r *http.Request, name string, opts ...ManagerOption) error {
@@ -50,12 +49,15 @@ func (m *ManagerRelayState) Pause(ctx context.Context, w http.ResponseWriter, r 
 	}
 	c := NewContainer(name, *o)
 
-	// Here we put the user's session ID in the relaystate to ensure continuity for the POST method
-	if err = x.SessionPersistValuesRelayState(r, c.ID.String()); err != nil {
-		return errors.WithStack(err)
+	// We have to put the continuity value in the cookie to ensure that value are passed between API and UI
+	// It is also useful to pass the value between SP and IDP with POST method because RelayState will take its value from cookie
+	if err = x.SessionPersistValues(w, r, m.dc.ContinuityCookieManager(ctx), CookieName, map[string]interface{}{
+		name: c.ID.String(),
+	}); err != nil {
+		return err
 	}
 
-	if err := m.d.ContinuityPersister().SaveContinuitySession(r.Context(), c); err != nil {
+	if err := m.dr.ContinuityPersister().SaveContinuitySession(r.Context(), c); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -83,11 +85,11 @@ func (m *ManagerRelayState) Continue(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	if err := x.SessionUnsetRelayState(&samlhandler.RelayStateValue); err != nil {
+	if err := x.SessionUnsetKey(w, r, m.dc.ContinuityCookieManager(ctx), CookieName, name); err != nil {
 		return nil, err
 	}
 
-	if err := m.d.ContinuityPersister().DeleteContinuitySession(ctx, container.ID); err != nil && !errors.Is(err, sqlcon.ErrNoRows) {
+	if err := m.dc.ContinuityPersister().DeleteContinuitySession(ctx, container.ID); err != nil && !errors.Is(err, sqlcon.ErrNoRows) {
 		return nil, err
 	}
 
@@ -96,12 +98,10 @@ func (m *ManagerRelayState) Continue(ctx context.Context, w http.ResponseWriter,
 
 func (m *ManagerRelayState) sid(ctx context.Context, w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, error) {
 	var sid uuid.UUID
-	if s, err := x.SessionGetStringRelayState(r); err != nil {
-		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
+	if s, err := x.SessionGetStringRelayState(r, m.dc.ContinuityCookieManager(ctx), CookieName, name); err != nil {
 		return sid, errors.WithStack(ErrNotResumable.WithDebugf("%+v", err))
 
 	} else if sid = x.ParseUUID(s); sid == uuid.Nil {
-		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
 		return sid, errors.WithStack(ErrNotResumable.WithDebug("session id is not a valid uuid"))
 
 	}
@@ -115,10 +115,10 @@ func (m *ManagerRelayState) container(ctx context.Context, w http.ResponseWriter
 		return nil, err
 	}
 
-	container, err := m.d.ContinuityPersister().GetContinuitySession(ctx, sid)
+	container, err := m.dr.ContinuityPersister().GetContinuitySession(ctx, sid)
 
 	if err != nil {
-		_ = x.SessionUnsetRelayState(&samlhandler.RelayStateValue)
+		_ = x.SessionUnsetKey(w, r, m.dc.ContinuityCookieManager(ctx), CookieName, name)
 	}
 
 	if errors.Is(err, sqlcon.ErrNoRows) {
@@ -139,11 +139,11 @@ func (m ManagerRelayState) Abort(ctx context.Context, w http.ResponseWriter, r *
 		return err
 	}
 
-	if err := x.SessionUnsetRelayState(&samlhandler.RelayStateValue); err != nil {
+	if err := x.SessionUnsetKey(w, r, m.dc.ContinuityCookieManager(ctx), CookieName, name); err != nil {
 		return err
 	}
 
-	if err := m.d.ContinuityPersister().DeleteContinuitySession(ctx, sid); err != nil && !errors.Is(err, sqlcon.ErrNoRows) {
+	if err := m.dr.ContinuityPersister().DeleteContinuitySession(ctx, sid); err != nil && !errors.Is(err, sqlcon.ErrNoRows) {
 		return errors.WithStack(err)
 	}
 

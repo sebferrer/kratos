@@ -38,7 +38,7 @@ const (
 var ErrNoSession = errors.New("saml: session not present")
 var samlMiddleware *samlsp.Middleware
 
-var RelayStateValue string
+var ContinuityKey = "ory_kratos_continuity"
 
 type (
 	handlerDependencies interface {
@@ -114,15 +114,13 @@ func (h *Handler) loginWithIdp(w http.ResponseWriter, r *http.Request, ps httpro
 	conf := h.d.Config(r.Context())
 
 	// We have to get the SessionID from the cookie to inject it into the context to ensure continuity
-	sid, err := r.Cookie("sid")
+	cookie, err := r.Cookie("ory_kratos_continuity")
 	if err != nil {
 		h.d.SelfServiceErrorManager().Forward(r.Context(), w, r, err)
 	}
-
 	body, _ := ioutil.ReadAll(r.Body)
-	r2 := r.Clone(context.WithValue(r.Context(), "sid", sid.Value))
+	r2 := r.Clone(context.WithValue(r.Context(), ContinuityKey, cookie.Value))
 	r2.Body = ioutil.NopCloser(bytes.NewReader(body))
-
 	*r = *r2
 
 	// Checks if the user already have an active session
@@ -256,7 +254,7 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 		// We have to replace the ContinuityCookie by using RelayState. We will pass the SessionID (uuid) of Kratos through RelayState
 		RelayStateFunc: func(w http.ResponseWriter, r *http.Request) string {
 			ctx := r.Context()
-			sid, ok := ctx.Value("sid").(string)
+			cipheredSID, ok := ctx.Value(ContinuityKey).(string)
 			if !ok {
 				_, err := w.Write([]byte("No SessionID in current context"))
 				if err != nil {
@@ -264,7 +262,7 @@ func (h *Handler) instantiateMiddleware(config config.Config) error {
 				}
 				return ""
 			}
-			return sid
+			return cipheredSID
 		},
 	})
 	if err != nil {

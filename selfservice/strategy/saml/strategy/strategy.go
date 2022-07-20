@@ -90,10 +90,6 @@ type registrationStrategyDependencies interface {
 	session.ManagementProvider
 }
 
-//###############
-// This file is like an helper for login and register flow
-//###############
-
 func (s *Strategy) ID() identity.CredentialsType {
 	return identity.CredentialsTypeSAML
 }
